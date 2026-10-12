@@ -1,12 +1,8 @@
-# Optional details for files in corpus/iog/. Any file without an entry is still ingested: its title
-# comes from the PDF's metadata (or the filename). MeaningEngine draws only on IoG's own materials.
-#
-# Add an entry to give a file a cleaner title or a public link that citations can point to.
+# Titles for files in corpus/iog/: these are what citations show. A file without an entry is still
+# used; its title comes from the filename. MeaningEngine draws only on IoG's own materials.
 #
 #   - file: iog/2025-generosity-report.pdf
 #     title: The Generosity Report 2025
-#     url: https://...           # optional public link
-#     publisher: Institute on Generosity   # optional; this is the default
 
 sources:
   # IoG Giving Guides, 2026 edition (originals: "GG Copies for External Partners", updated July 2026)

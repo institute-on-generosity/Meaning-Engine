@@ -1,8 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { citedTags } from "@/lib/citations";
-import type { Citation } from "@/lib/rag/types";
+import { citedTags, type Citation } from "@/lib/citations";
 import type { Reflection } from "@/lib/reflection";
 
 type Message =
@@ -80,8 +79,8 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
         for (const line of lines) {
           if (!line.trim()) continue;
           const event = JSON.parse(line);
-          if (event.type === "sources") {
-            updateLast((m) => (m.role === "assistant" ? { ...m, sources: event.sources } : m));
+          if (event.type === "citation") {
+            updateLast((m) => (m.role === "assistant" ? { ...m, sources: [...m.sources, event.citation] } : m));
           } else if (event.type === "text") {
             updateLast((m) => (m.role === "assistant" ? { ...m, content: m.content + event.text } : m));
           } else if (event.type === "crisis" || event.type === "notice" || event.type === "error") {
@@ -330,18 +329,14 @@ function AssistantBubble({ content, sources, streaming }: { content: string; sou
   );
 }
 
+const QUOTE_CHARS = 240;
+
 function SourceLine({ source }: { source: Citation }) {
-  const label = `${source.title}${source.page ? `, p. ${source.page}` : ""}`;
+  const quote = source.quote.length > QUOTE_CHARS ? `${source.quote.slice(0, QUOTE_CHARS).trimEnd()}…` : source.quote;
   return (
     <>
-      <span className="tag">{source.tag}</span>{" "}
-      {source.url ? (
-        <a href={source.url} target="_blank" rel="noreferrer">
-          {label}
-        </a>
-      ) : (
-        label
-      )}
+      <span className="tag">{source.tag}</span> <span className="source-title">{source.title}</span>
+      {quote && <q className="source-quote">{quote}</q>}
     </>
   );
 }
@@ -412,7 +407,7 @@ function reflectionAsMarkdown(r: Reflection): string {
   lines.push("## Practices to try", "");
   for (const p of r.practices) {
     lines.push(`- **${p.practice}** ${p.why}`);
-    for (const s of p.sources) lines.push(`  - Source: ${s.title}${s.page ? `, p. ${s.page}` : ""}, ${s.publisher}${s.url ? ` ${s.url}` : ""}`);
+    for (const g of p.guides) lines.push(`  - From IoG's ${g}`);
   }
   lines.push("", "## Questions to keep", "", ...r.questions_to_keep.map((q) => `- ${q}`), "");
   lines.push(`_Created with MeaningEngine, Institute on Generosity, ${new Date(r.createdAt).toLocaleDateString()}._`);
@@ -457,12 +452,10 @@ function ReflectionCard({ reflection: r }: { reflection: Reflection }) {
         {r.practices.map((p) => (
           <li key={p.practice}>
             <strong>{p.practice}</strong> {p.why}
-            {p.sources.length > 0 && (
+            {p.guides.length > 0 && (
               <ul className="sources">
-                {p.sources.map((s) => (
-                  <li key={s.tag}>
-                    <SourceLine source={s} />
-                  </li>
+                {p.guides.map((g) => (
+                  <li key={g}>{g}</li>
                 ))}
               </ul>
             )}

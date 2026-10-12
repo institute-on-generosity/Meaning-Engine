@@ -11,16 +11,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "ingest": "tsx scripts/ingest.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "corpus": "tsx scripts/corpus.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
-    "@supabase/supabase-js": "^2.117.3",
     "mammoth": "^1.13.0",
     "next": "^16.4.0",
-    "openai": "^7.32.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "unpdf": "^1.8.1",

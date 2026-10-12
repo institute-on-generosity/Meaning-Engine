@@ -1,4 +1,5 @@
 # MeaningEngine settings. Changes take effect on the next deploy (or dev-server restart).
+# IoG's documents are listed in config/corpus.json, written by `npm run corpus`.
 
 llm:
   # Provider code lives in lib/llm.ts. To use another provider, add a class there and register it in PROVIDERS.
@@ -9,17 +10,6 @@ llm:
   # The end-of-session giving reflection.
   reflection_model: claude-opus-5-5
   reflection_effort: medium
-
-embeddings:
-  provider: openai
-  model: text-embedding-3-small
-  dimensions: 1536          # must match the vector(1536) column in supabase/migrations
-
-retrieval:
-  top_k: 6                  # passages given to the model each turn
-  min_similarity: 0.25      # passages scoring below this are dropped as off-topic
-  chunk_chars: 2400         # ~500 words per passage
-  chunk_overlap_chars: 300
 
 session:
   max_user_turns: 40        # hard stop for a single session

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
+import corpusManifest from "../config/corpus.json";
 
 const EngineConfig = z.object({
   llm: z.object({
@@ -10,17 +11,6 @@ const EngineConfig = z.object({
     chat_effort: z.enum(["low", "medium", "high", "xhigh", "max"]),
     reflection_model: z.string(),
     reflection_effort: z.enum(["low", "medium", "high", "xhigh", "max"]),
-  }),
-  embeddings: z.object({
-    provider: z.string(),
-    model: z.string(),
-    dimensions: z.number().int().positive(),
-  }),
-  retrieval: z.object({
-    top_k: z.number().int().positive(),
-    min_similarity: z.number(),
-    chunk_chars: z.number().int().positive(),
-    chunk_overlap_chars: z.number().int().nonnegative(),
   }),
   session: z.object({
     max_user_turns: z.number().int().positive(),
@@ -69,4 +59,29 @@ export function prompt(name: "conversation" | "reflection"): string {
     prompts.set(name, text);
   }
   return text;
+}
+
+const CorpusManifest = z.object({
+  documents: z.array(
+    z.object({
+      title: z.string(),
+      source: z.string(), // path under corpus/
+      file_id: z.string(), // Anthropic Files API id
+      sha256: z.string(), // of the uploaded text, so unchanged documents aren't re-uploaded
+      chars: z.number().int(),
+    }),
+  ),
+});
+export type CorpusDoc = z.infer<typeof CorpusManifest>["documents"][number];
+
+let corpusDocs: CorpusDoc[] | undefined;
+
+/** IoG's documents, as uploaded by `npm run corpus` (bundled at build time). */
+export function corpus(): CorpusDoc[] {
+  if (!corpusDocs) {
+    const docs = CorpusManifest.parse(corpusManifest).documents;
+    if (docs.length === 0) throw new Error("No corpus uploaded yet. Run `npm run corpus`.");
+    corpusDocs = docs;
+  }
+  return corpusDocs;
 }

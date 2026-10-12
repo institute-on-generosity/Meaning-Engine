@@ -1,41 +1,45 @@
 # MeaningEngine
 
-A conversational reflection tool from the Institute on Generosity (IoG). A person talks about their giving: why they give, what they care about, and what they're unsure about. MeaningEngine responds with questions and insights drawn only from the research and Giving Guides IoG has shared, citing its sources. At the end, it writes a personal giving reflection they can download, copy, or print.
+A conversational reflection tool from the Institute on Generosity (IoG). A person talks about their giving: why they give, what they care about, and what they're unsure about. MeaningEngine responds with questions and insights drawn only from the materials IoG has shared, quoting its sources. At the end, it writes a personal giving reflection the person can download, copy, or print.
 
 It is explicitly **not** a therapist or a financial advisor. It's a structured reflection companion.
 
 ## How it works
 
-1. **Research corpus.** IoG's documents go in `corpus/iog/`. This is the tool's only source: it doesn't draw on outside research or the model's general knowledge of studies and statistics. `npm run ingest` splits each document into passages of about 500 words, turns each into a search vector (OpenAI embeddings), and stores them in Supabase (pgvector).
-2. **Each turn.** The app finds the 6 passages closest to what the person just said and gives them to Claude with the conversation. Claude replies with a question or reflection and cites any research it uses as [S1], [S2], …. The chat shows each cited source under the reply.
+1. **IoG's corpus.** IoG's documents (currently the 13 GG2026 Giving Guides) go in `corpus/iog/`. `npm run corpus` extracts each one's text and uploads it to Anthropic's file storage, then records the file ids in `config/corpus.json`. These documents are the tool's only source: the prompts forbid outside studies, statistics, and frameworks.
+2. **Each turn.** Claude gets the whole corpus plus the conversation. The documents come first and are identical for every session, so prompt caching makes repeated reads about a tenth of the normal input price. Claude replies with a question or reflection. When it draws on a guide, Anthropic's citations feature returns the exact sentence it relied on, and the chat shows that quote under the reply.
 3. **Safety first.** Before any model call, each message is checked against the crisis phrases in `config/safety.yaml`. On a match, the app shows crisis resources (988, Crisis Text Line, NAMI, findahelpline.com) and doesn't call the model. The conversation prompt also tells Claude to share these resources if it notices distress the phrase list misses.
-4. **Reflection.** After a few exchanges, a "Create my reflection" button appears. Claude writes a structured reflection: a summary, values, practices to try, and questions to keep. Citations on practices come from the retrieved passages, never from the model: if Claude names a source id it wasn't given, the code drops it.
+4. **Reflection.** After a few exchanges, a "Create my reflection" button appears. Claude writes a structured reflection: a summary, values, practices to try, and questions to keep. Each practice can name the guides it draws on; the code keeps only titles that match a real document.
 
 Conversations are not stored. Everything lives in the browser tab until it's closed.
 
 ## Running it locally
 
-Needs Node 20+.
+Needs Node 20+ and an Anthropic API key. That's the only key.
 
 ```bash
 npm install
-cp .env.example .env.local      # then fill in ANTHROPIC_API_KEY and OPENAI_API_KEY
+cp .env.example .env.local      # then fill in ANTHROPIC_API_KEY
 set -a; source .env.local; set +a
-npm run ingest -- --dry         # check what will be indexed (no API calls)
-npm run ingest                  # build the research index
+npm run corpus -- --dry         # check what will be uploaded (no API calls)
+npm run corpus                  # upload the documents, write config/corpus.json
 npm run dev                     # http://localhost:3000
 ```
 
-Without Supabase settings, ingest writes `data/index.json` and the app searches that file, which is fine for development.
+## IoG's corpus
 
-## Research corpus
+- **Add or update a document:** put the file (`.pdf`, `.docx`, `.md`, or `.txt`) in `corpus/iog/`, then run `npm run corpus`. Only new or changed documents are uploaded.
+- **Publish the change:** commit `config/corpus.json` and deploy. Once the new version is live, run `npm run corpus -- --prune` to delete the old uploaded copies. Pruning earlier would break the live site until it redeploys.
+- **Titles:** set in `corpus/sources.yaml`; these are what citations show. Without an entry, the title comes from the filename.
+- **IoG materials only:** IoG wants the tool to draw only on what it has shared, so don't add outside papers.
+- **Loaded so far:** the 13 IoG Giving Guides (GG2026). The originals are named "Copy of …"; they were copied in with clean filenames.
+- **`corpus/iog/` is gitignored** because this GitHub repo is public. Keep the master copies in IoG's shared drive. The uploaded text lives in IoG's Anthropic account, visible only to that account's API keys. The ids in `config/corpus.json` are useless without such a key.
+- **Same account everywhere:** the API key the site runs with must belong to the same Anthropic account and workspace that ran `npm run corpus`.
+- **Scanned PDFs** have no extractable text; `npm run corpus` warns and skips them. Run OCR first.
 
-- **Add or update a document:** put the file (`.pdf`, `.docx`, `.md`, or `.txt`) in `corpus/iog/`, then run `npm run ingest`. Each run rebuilds the whole index, so removed files drop out too.
-- **Titles and links:** optional, in `corpus/sources.yaml`. Without an entry, the title comes from the PDF's metadata or its filename. Add a `url` so people can open the source from a citation.
-- **IoG materials only:** IoG wants the tool to draw only on what it has shared, so don't add outside papers. The prompts also tell the model not to bring in studies, statistics, or frameworks from its general knowledge.
-- **Loaded so far:** the 13 IoG Giving Guides (GG2026). The originals are named "Copy of …"; they were copied in with clean filenames, and their citation titles are set in `corpus/sources.yaml`.
-- **Scanned PDFs** have no extractable text; ingest warns and skips them. Run OCR first.
-- **`corpus/iog/` is gitignored** because this GitHub repo is public. Keep the master copies in IoG's shared drive and run ingest from a machine that has them. If the repo is made private, remove that line from `.gitignore` to version the PDFs here.
+## Size limits
+
+The whole corpus is sent on every turn. That works because it's small: the 13 guides are about 130k tokens, and Claude reads up to 1M. Cost and first-reply time grow with the corpus, and `npm run corpus` warns above about 400k tokens. Well past that point, it would make sense to switch to search, giving Claude only the passages relevant to each turn. That version (OpenAI embeddings + Supabase pgvector) is in this repo's git history, in the first commit.
 
 ## Changing the conversation
 
@@ -46,43 +50,53 @@ Most changes need no code:
 | How MeaningEngine talks, the session arc, scope limits | `prompts/conversation.md` |
 | What goes into the end-of-session reflection | `prompts/reflection.md` (fields are in `lib/reflection.ts`) |
 | Opening message, session length, when the reflection button appears | `config/engine.yaml` |
-| Model, effort, number of research passages per turn | `config/engine.yaml` |
+| Model and effort | `config/engine.yaml` |
 | Crisis phrases and the crisis message | `config/safety.yaml` |
 | Colors and fonts (IoG branding) | the tokens at the top of `app/globals.css` |
 
 ## Changing the LLM
 
-Models are set in `config/engine.yaml` under `llm:`. Provider code lives in [`lib/llm.ts`](lib/llm.ts). To use another provider, add a class implementing `ChatProvider` and register it in `PROVIDERS`. Embeddings work the same way in [`lib/embeddings.ts`](lib/embeddings.ts). Changing the embeddings model means re-running ingest, and for Supabase, matching the `vector(1536)` column size.
+Models are set in `config/engine.yaml` under `llm:`. Provider code lives in [`lib/llm.ts`](lib/llm.ts). To use another provider, add a class implementing `ChatProvider` and register it in `PROVIDERS`. That class also has to give its model the corpus, for example via that provider's own file upload, since the uploaded files belong to Anthropic's storage.
 
 ## Cost
 
-The default is Claude Opus 5.5 at low effort for the conversation. Claude Opus 5.5 costs $4 per million input tokens and $20 per million output tokens. A 10-exchange session plus a reflection comes to roughly $0.30–0.50 (about 7k input tokens per turn, mostly the prompt and the research passages). That's well above the proposal's $0.01–0.05 per-session target. To hit it, set `chat_model: claude-haiku-5-5` (about 40× cheaper per token, roughly $0.01 per session) or `claude-sonnet-5-5` (about half the price of Opus), then compare conversation quality on a few test sessions. The server log prints token counts for every turn. Embeddings cost a fraction of a cent per session, and well under $1 to index the whole corpus.
+The corpus is about 130k tokens per request. Prompt caching charges a one-time write when the cache is cold (about 1.25× the input price), then about a tenth of the input price for each turn that reuses it within 5 minutes. Rough cost of a 10-turn session plus a reflection:
 
-## Deploying (Vercel + Supabase)
+| Model (`chat_model`) | Per session |
+| --- | --- |
+| `claude-opus-5-5` (default) | ~$0.70–1.00 |
+| `claude-sonnet-5-5` | ~$0.55–0.70 |
+| `claude-haiku-5-5` | ~$0.15 |
 
-1. Create a Supabase project. In the SQL editor, run [`supabase/migrations/0001_corpus.sql`](supabase/migrations/0001_corpus.sql).
-2. Locally, set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` and run `npm run ingest`. The index now lives in Supabase.
-3. Import the repo into Vercel. Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` under **Settings → Environment Variables**.
+The proposal targets $0.01–0.05 per session. The biggest levers:
 
-The service role key stays on the server. The `corpus_chunks` table has row-level security on, so the public anon key can't read it.
+- **A smaller model.** Compare conversation quality on a few test sessions.
+- **A smaller corpus.** *Policy Advocacy* alone is about a fifth of the corpus, and IoG marks only parts of it and of *Philanthropic Asset Portfolio* as core reading.
+
+The server log prints input, cache-read, cache-write, and output tokens for every turn.
+
+## Deploying
+
+1. Import the repo into Vercel, or IoG's usual host. Vercel's free plan is for non-commercial personal use, so use its paid plan for an IoG site.
+2. Add `ANTHROPIC_API_KEY` under **Settings → Environment Variables**. Use a key from the account that uploaded the corpus.
+3. Deploy. `config/corpus.json` in the repo tells the site which uploaded documents to read.
 
 ## Tests
 
 ```bash
-npm test          # chunking, crisis detection, citation handling
+npm test          # crisis detection, citation numbering, text cleanup
 npm run typecheck
 ```
 
 ## Status
 
-- [x] RAG over IoG's research and Giving Guides, with cited sources
+- [x] IoG's 13 Giving Guides as the full grounding corpus, with quoted citations
 - [x] Conversation design (prompt), crisis interception, scope limits
 - [x] End-of-session giving reflection with download / copy / print
-- [x] Local dev index; Supabase pgvector for production
+- [x] IoG branding (2026 brand guide palette and type, Prompt Library layout)
 - [ ] **Licensed professional review of `config/safety.yaml` and the safety section of `prompts/conversation.md` (required before public launch)**
-- [x] 13 IoG Giving Guides (GG2026) loaded
+- [ ] Upload the corpus with IoG's Anthropic key; test conversations; pick the model
 - [ ] Conversation design workshop with IoG staff; tune `prompts/conversation.md`
 - [ ] Rate limiting for the public endpoint
-- [ ] Optional accounts and saved sessions (Supabase); email the reflection
+- [ ] Optional accounts and saved sessions; email the reflection
 - [ ] Kiosk mode for convenings; post-session survey
-- [ ] IoG branding (logo, colors, fonts)

@@ -10,5 +10,3 @@ next-env.d.ts
 corpus/iog/*
 !corpus/iog/README.md
 
-# Local vector index built by `npm run ingest` (production uses Supabase).
-data/index.json
