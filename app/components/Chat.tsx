@@ -137,8 +137,9 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
   if (!started) return <Intro onBegin={() => setStarted(true)} />;
 
   return (
-    <div className="shell">
+    <div className="app">
       <Header onRestart={restart} />
+      <div className="shell">
       <main className="thread" aria-live="polite">
         <AssistantBubble content={opening} sources={[]} />
         {messages.map((m, i) =>
@@ -206,60 +207,107 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
           An AI reflection tool, not a therapist or financial advisor. In crisis? Call or text 988 (US).
         </p>
       </footer>
+      </div>
     </div>
   );
 }
 
 function Header({ onRestart }: { onRestart?: () => void }) {
   return (
-    <header className="masthead">
-      <div>
-        <span className="wordmark">MeaningEngine</span>
-        <span className="byline">Institute on Generosity</span>
+    <header className="topbar">
+      <div className="topbar-inner">
+        <div className="brand">
+          <span className="org">Institute on Generosity</span>
+          <span className="product">MeaningEngine · a reflection on your giving</span>
+        </div>
+        {onRestart && (
+          <button className="ghost" onClick={onRestart}>
+            Start over
+          </button>
+        )}
       </div>
-      {onRestart && (
-        <button className="link" onClick={onRestart}>
-          Start over
-        </button>
-      )}
     </header>
   );
 }
 
+const STAGES = [
+  ["Opening", "What brought you here, and what's on your mind about giving right now."],
+  ["Story", "Moments that felt meaningful, ones that felt like obligation, and who taught you to give."],
+  ["Values", "What those moments reveal about what you care about."],
+  ["Tensions", "What you're unsure about or pulled between: near or far, now or later, head or heart."],
+  ["Intention", "One small, concrete practice you want to try, and a written reflection to keep."],
+];
+
 function Intro({ onBegin }: { onBegin: () => void }) {
   return (
-    <div className="shell">
+    <div className="app">
       <Header />
-      <main className="intro">
-        <h1>What makes your giving meaningful?</h1>
-        <p className="lede">
-          A guided conversation to help you think more intentionally about why you give, what you care about, and what
-          you&rsquo;re unsure about. It draws on the Institute on Generosity&rsquo;s research and Giving Guides.
-        </p>
-        <ul className="ground-rules">
-          <li>
-            <strong>It takes about 10–15 minutes.</strong> At the end you can create a personal giving reflection to keep.
-          </li>
-          <li>
-            <strong>It&rsquo;s a reflection companion, not a therapist or a financial advisor.</strong> It won&rsquo;t tell you
-            where or how much to give.
-          </li>
-          <li>
-            <strong>It&rsquo;s an AI.</strong> It can be wrong, and when it shares research it cites the source so you can
-            check.
-          </li>
-          <li>
-            <strong>Your conversation isn&rsquo;t saved.</strong> It disappears when you close this page.
-          </li>
-        </ul>
-        <p className="crisis-note">
-          If you&rsquo;re in crisis or thinking about harming yourself, please call or text <strong>988</strong> (US) or
-          visit findahelpline.com.
-        </p>
-        <button className="primary" onClick={onBegin}>
-          Begin
-        </button>
-      </main>
+      <section className="hero">
+        <div className="hero-inner">
+          <span className="chip">Reflection tool</span>
+          <h1>What makes your giving meaningful?</h1>
+          <div className="hero-cols">
+            <p className="lede">
+              A guided conversation to help you think more intentionally about why you give, what you care about, and
+              what you&rsquo;re unsure about. It draws on the Institute on Generosity&rsquo;s research and Giving Guides.
+            </p>
+            <p className="aside">
+              MeaningEngine asks questions; it doesn&rsquo;t hand you answers. It won&rsquo;t tell you where or how much to
+              give. You decide.
+            </p>
+          </div>
+          <dl className="stats">
+            <div>
+              <dt>10–15</dt>
+              <dd>Minutes</dd>
+            </div>
+            <div>
+              <dt>5</dt>
+              <dd>Stages of reflection</dd>
+            </div>
+            <div>
+              <dt>Private</dt>
+              <dd>Nothing is saved</dd>
+            </div>
+          </dl>
+          <button className="btn-dark" onClick={onBegin}>
+            Begin the reflection →
+          </button>
+        </div>
+      </section>
+
+      <section className="dark">
+        <div className="dark-inner">
+          <div>
+            <p className="eyebrow">How it works</p>
+            <h2>One conversation, start to finish</h2>
+            <p className="dark-lede">One question at a time, at your pace. You can stop whenever you like.</p>
+            <ul className="fine">
+              <li>It&rsquo;s an AI, not a therapist or a financial advisor, and it can be wrong.</li>
+              <li>When it shares IoG research it cites the source so you can check.</li>
+              <li>Your conversation disappears when you close this page.</li>
+              <li>
+                In crisis or thinking about harming yourself? Call or text <strong>988</strong> (US) or visit
+                findahelpline.com.
+              </li>
+            </ul>
+            <button className="btn-lime" onClick={onBegin}>
+              Begin →
+            </button>
+          </div>
+          <ol className="stages">
+            {STAGES.map(([name, text], i) => (
+              <li key={name}>
+                <span className="stage-num">Stage {i + 1}</span>
+                <div>
+                  <h3>{name}</h3>
+                  <p>{text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
     </div>
   );
 }
@@ -270,7 +318,7 @@ function AssistantBubble({ content, sources, streaming }: { content: string; sou
     <div className="msg assistant">
       <RichText text={content} sources={sources} />
       {cited.length > 0 && (
-        <ol className="sources">
+        <ol className="sources" aria-label="Sources">
           {cited.map((s) => (
             <li key={s.tag}>
               <SourceLine source={s} />
