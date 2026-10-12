@@ -1,0 +1,14 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.env
+.env.local
+.vercel/
+
+# IoG's internal research PDFs stay out of this public repo. See README "Research corpus".
+corpus/iog/*
+!corpus/iog/README.md
+
+# Local vector index built by `npm run ingest` (production uses Supabase).
+data/index.json

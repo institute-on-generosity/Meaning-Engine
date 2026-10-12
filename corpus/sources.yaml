@@ -1,0 +1,38 @@
+# Optional details for files in corpus/iog/. Any file without an entry is still ingested: its title
+# comes from the PDF's metadata (or the filename). MeaningEngine draws only on IoG's own materials.
+#
+# Add an entry to give a file a cleaner title or a public link that citations can point to.
+#
+#   - file: iog/2025-generosity-report.pdf
+#     title: The Generosity Report 2025
+#     url: https://...           # optional public link
+#     publisher: Institute on Generosity   # optional; this is the default
+
+sources:
+  # IoG Giving Guides, 2026 edition (originals: "GG Copies for External Partners", updated July 2026)
+  - file: iog/clarifying-your-giving-criteria-and-priorities.docx
+    title: "Giving Guide: Clarifying Your Giving Criteria and Priorities"
+  - file: iog/conducting-a-site-visit.docx
+    title: "Giving Guide: Conducting a Site Visit"
+  - file: iog/ecosystem-mapping.docx
+    title: "Giving Guide: Ecosystem Mapping"
+  - file: iog/evaluating-nonprofit-effectiveness.docx
+    title: "Giving Guide: Evaluating Nonprofit Effectiveness"
+  - file: iog/funder-nonprofit-partnership.docx
+    title: "Giving Guide: Funder–Nonprofit Partnership"
+  - file: iog/conducting-in-depth-nonprofit-due-diligence.docx
+    title: "Giving Guide: Conducting In-Depth Nonprofit Due Diligence"
+  - file: iog/conducting-an-initial-assessment-of-nonprofits.docx
+    title: "Giving Guide: Conducting an Initial Assessment of Nonprofits"
+  - file: iog/policy-advocacy.docx
+    title: "Giving Guide: Policy Advocacy"
+  - file: iog/meaningful-generosity.docx
+    title: "Giving Guide: Meaningful Generosity"
+  - file: iog/nonprofit-board-service.docx
+    title: "Giving Guide: Nonprofit Board Service"
+  - file: iog/philanthropic-asset-portfolio.docx
+    title: "Giving Guide: Philanthropic Asset Portfolio"
+  - file: iog/philanthropic-giving-models.docx
+    title: "Giving Guide: Philanthropic Giving Models"
+  - file: iog/philanthropic-risk.docx
+    title: "Giving Guide: Philanthropic Risk"
