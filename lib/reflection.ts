@@ -17,7 +17,7 @@ export const ReflectionSchema = z.object({
         why: z.string().describe("Why it fits this person, in a sentence or two."),
         guides: z
           .array(z.string())
-          .describe("Exact titles of the IoG documents this practice draws on, as given in the document titles, or []."),
+          .describe("Exact titles of the guides whose cited passages this practice builds on, or []."),
       }),
     )
     .describe("1-3 practices."),
@@ -29,36 +29,55 @@ export interface Reflection extends ReflectionDraft {
   createdAt: string;
 }
 
+/** A passage MeaningEngine cited during the conversation (sent back by the browser). */
+export const CitedPassage = z.object({ title: z.string().max(200), quote: z.string().max(800) });
+export type CitedPassage = z.infer<typeof CitedPassage>;
+export const CitedPassages = z.array(CitedPassage).max(40);
+
+/**
+ * Write the end-of-session reflection. It works from the conversation plus the passages already
+ * cited in it, not the whole corpus: that keeps it grounded in what the person actually saw, and
+ * avoids sending ~150k tokens of guides a second time.
+ */
 export async function createReflection(
   messages: Turn[],
+  cited: CitedPassage[],
   options: { model?: string; onUsage?: (usage: Usage) => void } = {},
 ): Promise<Reflection> {
   const config = engineConfig();
-  const documents = corpus();
+  // Only passages from real guides count; a browser can send anything.
+  const byTitle = new Map(corpus().map((d) => [d.title.toLowerCase(), d.title]));
+  const passages = cited.flatMap((c) => {
+    const title = byTitle.get(c.title.trim().toLowerCase());
+    return title ? [{ title, quote: c.quote.trim() }] : [];
+  });
   const transcript = messages
     .map((m) => {
       const who = m.role === "user" ? "person" : "meaning_engine";
       return `<${who}>\n${m.content}\n</${who}>`;
     })
     .join("\n");
+  const sources = passages.length
+    ? passages.map((p) => `<passage guide="${p.title}">\n${p.quote}\n</passage>`).join("\n")
+    : "No passages were cited in this conversation.";
 
   const draft = await getProvider().structured({
     model: options.model ?? config.llm.reflection_model,
     effort: config.llm.reflection_effort,
     system: prompt("reflection"),
-    prompt: `<conversation>\n${transcript}\n</conversation>\n\nWrite this person's giving reflection.`,
-    documents,
+    prompt: `<cited_passages>\n${sources}\n</cited_passages>\n\n<conversation>\n${transcript}\n</conversation>\n\nWrite this person's giving reflection.`,
+    documents: [],
     schema: ReflectionSchema,
     onUsage: options.onUsage,
   });
 
-  // Guide titles come from the corpus, never from the model: anything that isn't a real title is dropped.
-  const byTitle = new Map(documents.map((d) => [d.title.toLowerCase(), d.title]));
+  // A practice may name only guides whose passages were actually cited.
+  const citedTitles = new Map(passages.map((p) => [p.title.toLowerCase(), p.title]));
   return {
     ...draft,
     practices: draft.practices.map((p) => ({
       ...p,
-      guides: [...new Set(p.guides.flatMap((g) => byTitle.get(g.trim().toLowerCase()) ?? []))],
+      guides: [...new Set(p.guides.flatMap((g) => citedTitles.get(g.trim().toLowerCase()) ?? []))],
     })),
     createdAt: new Date().toISOString(),
   };

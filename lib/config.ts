@@ -77,6 +77,7 @@ const CorpusManifest = z.object({
       file_id: z.string(), // Anthropic Files API id
       sha256: z.string(), // of the uploaded text, so unchanged documents aren't re-uploaded
       chars: z.number().int(),
+      tokens: z.number().int().optional(), // as sent to the model, with citations on (measured by `npm run corpus`)
     }),
   ),
 });

@@ -191,6 +191,30 @@ class AnthropicProvider implements ChatProvider {
     return (await this.client.files.upload({ file })).id;
   }
 
+  /**
+   * Tokens one document costs per request, as the chat sends it (with citations on). The
+   * counting endpoint is free but doesn't accept uploaded files, so the text is sent inline.
+   */
+  async countDocumentTokens(title: string, text: string): Promise<number> {
+    const base = { model: "claude-haiku-5-5", messages: [{ role: "user" as const, content: "x" }] };
+    const [withDoc, without] = await Promise.all([
+      this.client.beta.messages.countTokens({
+        ...base,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "document", source: { type: "text", media_type: "text/plain", data: text }, title, citations: { enabled: true } },
+              { type: "text", text: "x" },
+            ],
+          },
+        ],
+      }),
+      this.client.beta.messages.countTokens(base),
+    ]);
+    return withDoc.input_tokens - without.input_tokens;
+  }
+
   async deleteFile(fileId: string): Promise<void> {
     await this.client.files.delete(fileId);
   }

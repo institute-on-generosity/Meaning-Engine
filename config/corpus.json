@@ -1,1 +1,108 @@
-{ "documents": [] }
+{
+  "documents": [
+    {
+      "title": "Giving Guide: Clarifying Your Giving Criteria and Priorities",
+      "source": "iog/clarifying-your-giving-criteria-and-priorities.docx",
+      "file_id": "file_01T2hKY3mi2WGeHhCfDEYtia",
+      "sha256": "b555bc2e4eeb6e6f41c775f2c51ca97631bcb57c7c9dedd2d5f70901d171469d",
+      "chars": 27442,
+      "tokens": 12250
+    },
+    {
+      "title": "Giving Guide: Conducting a Site Visit",
+      "source": "iog/conducting-a-site-visit.docx",
+      "file_id": "file_0166ApgxzK3YF9wBgNWobsrA",
+      "sha256": "fc106f617f7414b89935b23ece7d93249d9f7d5294ab9d743e1dc89afaf0021f",
+      "chars": 23024,
+      "tokens": 10605
+    },
+    {
+      "title": "Giving Guide: Conducting an Initial Assessment of Nonprofits",
+      "source": "iog/conducting-an-initial-assessment-of-nonprofits.docx",
+      "file_id": "file_01EQ9WraZW8rRKfAvqqrqW1q",
+      "sha256": "9c13cfc76e528ce47236ee6ff4fdb2f52d0e69f3478a1e31ad5e1f908c71f5cb",
+      "chars": 30184,
+      "tokens": 13514
+    },
+    {
+      "title": "Giving Guide: Conducting In-Depth Nonprofit Due Diligence",
+      "source": "iog/conducting-in-depth-nonprofit-due-diligence.docx",
+      "file_id": "file_019JBFKSpq3BuVuqJMCjD2nz",
+      "sha256": "2c5867ea18fabdb410538127612c0d0d0b53e1c73072ebd986d01d4c3021b6f6",
+      "chars": 53693,
+      "tokens": 23592
+    },
+    {
+      "title": "Giving Guide: Ecosystem Mapping",
+      "source": "iog/ecosystem-mapping.docx",
+      "file_id": "file_014mVXwjgtmtmtsNFXEP1PM1",
+      "sha256": "a307be430c14f36a43a573c467fe3f470821f61ecfa5d933fda3b63954446df6",
+      "chars": 28196,
+      "tokens": 12842
+    },
+    {
+      "title": "Giving Guide: Evaluating Nonprofit Effectiveness",
+      "source": "iog/evaluating-nonprofit-effectiveness.docx",
+      "file_id": "file_01FLL1joLsguP9DAEkFzFA6M",
+      "sha256": "896cce830bf2be8820bb34d257a693590e7d395eff4e34b71ca23bbefe9a8378",
+      "chars": 29600,
+      "tokens": 13534
+    },
+    {
+      "title": "Giving Guide: Funder–Nonprofit Partnership",
+      "source": "iog/funder-nonprofit-partnership.docx",
+      "file_id": "file_01KDtMLtH6XCFJBj5h1brHVh",
+      "sha256": "a305687054b54b7e71545540456ab794e28f56146b4622950b2b51793a1f25a5",
+      "chars": 27409,
+      "tokens": 12602
+    },
+    {
+      "title": "Giving Guide: Meaningful Generosity",
+      "source": "iog/meaningful-generosity.docx",
+      "file_id": "file_01E75zzUxNpzpMQYmtmVFRyU",
+      "sha256": "d9e693b8f1656e7abac2be7736a6a13386d71d11f46de83449dce080223c3c43",
+      "chars": 28337,
+      "tokens": 13708
+    },
+    {
+      "title": "Giving Guide: Nonprofit Board Service",
+      "source": "iog/nonprofit-board-service.docx",
+      "file_id": "file_01CGS25sXy6u2gPjFrA7Xwt8",
+      "sha256": "81c866269999e192fca1a5c62bfd2ff7af518229fd51306fc5d0a9608f0feee5",
+      "chars": 67067,
+      "tokens": 28527
+    },
+    {
+      "title": "Giving Guide: Philanthropic Asset Portfolio",
+      "source": "iog/philanthropic-asset-portfolio.docx",
+      "file_id": "file_01TEFgyHdpq1iRKoSUAF7kpB",
+      "sha256": "0bfa12427c808820b3f99e2568630402a69c543668bb6d4148df908afc570637",
+      "chars": 58468,
+      "tokens": 26179
+    },
+    {
+      "title": "Giving Guide: Philanthropic Giving Models",
+      "source": "iog/philanthropic-giving-models.docx",
+      "file_id": "file_01WhYkBHtpXLuh7skjGuSrPP",
+      "sha256": "15fbe7b0ee2aa8f94d72f55ba6b0c209bc101c7006302fe9c01fc370009befec",
+      "chars": 22597,
+      "tokens": 10318
+    },
+    {
+      "title": "Giving Guide: Philanthropic Risk",
+      "source": "iog/philanthropic-risk.docx",
+      "file_id": "file_01TC7nZN1sS9jpHXjcz8arMD",
+      "sha256": "e221e7c50d332befeb07462aced39034c4fdcb37c35895771c319c137d9b85dc",
+      "chars": 25911,
+      "tokens": 11440
+    },
+    {
+      "title": "Giving Guide: Policy Advocacy",
+      "source": "iog/policy-advocacy.docx",
+      "file_id": "file_01JvMocJe3pFdH14xmWRxLBT",
+      "sha256": "8265f533afefc0cc355abb9e2af21f80290da1ada1b0cc662b72c1f1a9f5d276",
+      "chars": 100141,
+      "tokens": 41508
+    }
+  ]
+}

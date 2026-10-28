@@ -3,7 +3,7 @@
  * so IoG can choose a model by comparing quality against cost.
  *
  *   npm run compare                      # show the plan and estimated cost, then stop
- *   npm run compare -- --yes             # run it (spends real money; about $4–5 for all models and conversations)
+ *   npm run compare -- --yes             # run it (spends real money; it prints the estimate first)
  *   npm run compare -- --yes --models claude-haiku-5-5,claude-sonnet-5-5 --personas habit,family
  *
  * Needs ANTHROPIC_API_KEY and an uploaded corpus (`npm run corpus`). Writes evals/out/<time>/report.md.
@@ -138,6 +138,7 @@ async function runOne(model: string, persona: Persona): Promise<Run> {
   const system = `${prompt("conversation")}\n\nThe session opened with this message from you:\n"${config.opening_message}"`;
   const history: Turn[] = [];
   const transcript: Run["transcript"] = [];
+  const cited: { title: string; quote: string }[] = [];
   let total = 0;
   const started = Date.now();
   try {
@@ -148,7 +149,10 @@ async function runOne(model: string, persona: Persona): Promise<Run> {
       const citations: string[] = [];
       for await (const event of getProvider().streamReply({ model, effort: config.llm.chat_effort, system, history, documents })) {
         if (event.type === "text") text += event.text;
-        else if (event.type === "citation") citations.push(`${event.citation.tag} ${event.citation.title}: "${event.citation.quote}"`);
+        else if (event.type === "citation") {
+          citations.push(`${event.citation.tag} ${event.citation.title}: "${event.citation.quote}"`);
+          cited.push({ title: event.citation.title, quote: event.citation.quote });
+        }
         else if (event.type === "usage") total += cost(model, event.usage);
         else if (event.type === "declined") text += "\n\n[model declined]";
       }
@@ -158,7 +162,7 @@ async function runOne(model: string, persona: Persona): Promise<Run> {
     }
     const reflection = persona.noReflection
       ? null
-      : await createReflection(history, { model, onUsage: (u) => (total += cost(model, u)) });
+      : await createReflection(history, cited, { model, onUsage: (u) => (total += cost(model, u)) });
     return { model, persona, transcript, reflection, error: null, cost: total, seconds: (Date.now() - started) / 1000 };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
@@ -208,11 +212,14 @@ async function main() {
   if (personas.length === 0) throw new Error(`No personas matched. Options: ${PERSONAS.map((p) => p.id).join(", ")}`);
 
   const docs = corpus(); // fails early with a clear message if the corpus isn't uploaded
-  const corpusTokens = docs.reduce((a, d) => a + d.chars, 0) / 4;
+  const corpusTokens = docs.reduce((a, d) => a + (d.tokens ?? d.chars * 0.42), 0);
   const perModel = (m: string) => {
     const p = PRICES[m];
-    const turns = personas.reduce((a, x) => a + x.turns.length + (x.noReflection ? 0 : 1), 0);
-    return (corpusTokens * (2 * p.cacheWrite + turns * p.cacheRead) + turns * (1500 * p.input + 600 * p.output)) / 1e6;
+    const replies = personas.reduce((a, x) => a + x.turns.length, 0);
+    const reflections = personas.filter((x) => !x.noReflection).length;
+    // One cache write per model (conversations run back to back), then cached reads every reply.
+    const chat = corpusTokens * (p.cacheWrite + (replies - 1) * p.cacheRead) + replies * (2000 * p.input + 400 * p.output);
+    return (chat + reflections * (3000 * p.input + 1000 * p.output)) / 1e6;
   };
   const estimate = models.reduce((a, m) => a + perModel(m), 0);
   console.log(`${models.length} model(s) × ${personas.length} conversation(s): ${models.join(", ")}`);

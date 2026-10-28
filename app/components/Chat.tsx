@@ -76,6 +76,21 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
       .map(({ role, content }) => ({ role, content }));
   }
 
+  /** Every distinct passage cited so far, for the reflection to build on. */
+  function citedPassages(list: Message[]) {
+    const seen = new Set<string>();
+    return list.flatMap((m) =>
+      m.role === "assistant"
+        ? m.sources.flatMap(({ title, quote }) => {
+            const key = `${title}\u0000${quote}`;
+            if (seen.has(key)) return [];
+            seen.add(key);
+            return [{ title, quote }];
+          })
+        : [],
+    );
+  }
+
   function updateLast(fn: (m: Message) => Message) {
     setMessages((prev) => [...prev.slice(0, -1), fn(prev[prev.length - 1])]);
   }
@@ -146,7 +161,7 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
       const res = await fetch("/api/reflection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: transcript(messages), mode }),
+        body: JSON.stringify({ messages: transcript(messages), cited: citedPassages(messages), mode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong. Please try again.");

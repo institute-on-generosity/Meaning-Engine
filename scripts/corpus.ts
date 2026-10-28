@@ -22,6 +22,8 @@ const DIR = path.join(process.cwd(), "corpus", "iog");
 const SOURCES = path.join(process.cwd(), "corpus", "sources.yaml");
 const MANIFEST = path.join(process.cwd(), "config", "corpus.json");
 const PREFIX = "meaningengine__"; // marks our uploads in the account's file storage
+// Rough tokens per character with citations on, measured on the Giving Guides; used only by --dry.
+const TOKENS_PER_CHAR = 0.42;
 
 const Sources = z.object({
   sources: z.array(z.object({ file: z.string(), title: z.string().optional() })).default([]),
@@ -67,7 +69,7 @@ async function main() {
   const previous = new Map(readManifest().map((d) => [d.source, d]));
   const storage = dry ? null : corpusStorage();
   const documents: CorpusDoc[] = [];
-  let totalChars = 0;
+  let totalTokens = 0;
 
   for (const name of files) {
     const source = `iog/${name}`;
@@ -77,22 +79,27 @@ async function main() {
       console.warn(`skip ${source}: no extractable text (scanned PDF? run OCR first)`);
       continue;
     }
-    totalChars += text.length;
     // The title is part of the hash so a renamed document is re-uploaded with its new name.
     const sha256 = crypto.createHash("sha256").update(`${title}\n${text}`).digest("hex");
     const prior = previous.get(source);
     let fileId = prior?.sha256 === sha256 ? prior.file_id : null;
+    let tokens = prior?.sha256 === sha256 ? prior.tokens : undefined;
     const status = fileId ? "unchanged" : prior ? "changed" : "new";
     if (!fileId && storage) {
       fileId = await storage.upload(`${PREFIX}${path.basename(name, path.extname(name))}.txt`, text);
     }
-    console.log(`${status.padEnd(9)} ${title} (${Math.round(text.length / 1000)}k chars)`);
-    documents.push({ title, source, file_id: fileId ?? "(dry run)", sha256, chars: text.length });
+    if (tokens === undefined && storage) tokens = await storage.countDocumentTokens(title, text);
+    const size = tokens ? `${Math.round(tokens / 1000)}k tokens` : `${Math.round(text.length / 1000)}k chars`;
+    console.log(`${status.padEnd(9)} ${title} (${size})`);
+    documents.push({ title, source, file_id: fileId ?? "(dry run)", sha256, chars: text.length, tokens });
+    totalTokens += tokens ?? Math.round(text.length * TOKENS_PER_CHAR);
   }
 
-  const estTokens = Math.round(totalChars / 4);
-  console.log(`\n${documents.length} documents, ~${Math.round(estTokens / 1000)}k tokens sent with every request.`);
-  if (estTokens > 400_000) {
+  const measured = documents.every((d) => d.tokens !== undefined);
+  console.log(
+    `\n${documents.length} documents, ${measured ? "" : "~"}${Math.round(totalTokens / 1000)}k tokens sent with every request${measured ? "" : " (estimated)"}.`,
+  );
+  if (totalTokens > 400_000) {
     console.warn("That's large: cost and first-reply latency grow with it. Consider bringing back search (see README).");
   }
   if (dry) return;

@@ -1,7 +1,7 @@
 import { ZodError } from "zod";
 import { engineConfig } from "@/lib/config";
 import { ModelDeclinedError } from "@/lib/llm";
-import { createReflection } from "@/lib/reflection";
+import { CitedPassages, createReflection, type CitedPassage } from "@/lib/reflection";
 import { modeOf, recordEvent } from "@/lib/events";
 import { guard } from "@/lib/guard";
 import { parseTranscript, userTurns } from "@/lib/session";
@@ -14,10 +14,12 @@ export async function POST(req: Request) {
   if (blocked) return blocked;
 
   let messages;
+  let cited: CitedPassage[];
   let body: unknown;
   try {
     body = await req.json();
     messages = parseTranscript(body);
+    cited = CitedPassages.parse((body as { cited?: unknown }).cited ?? []);
   } catch (err) {
     const detail = err instanceof ZodError ? err.issues[0]?.message : "invalid JSON";
     return Response.json({ error: `Bad request: ${detail}` }, { status: 400 });
@@ -26,7 +28,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Talk a little longer before creating a reflection." }, { status: 400 });
   }
   try {
-    const reflection = await createReflection(messages);
+    const reflection = await createReflection(messages, cited);
     await recordEvent({
       type: "reflection_created",
       mode: modeOf(body),
