@@ -39,7 +39,9 @@ MeaningEngine draws only on IoG's own materials. Don't add outside research.
 
 Commit and push; the site updates on the next deploy. Write prompt changes in plain language, as if briefing a thoughtful new colleague.
 
-**Safety changes need review.** Changes to `config/safety.yaml`, or to the "Safety" and "What you are not" sections of `prompts/conversation.md`, should be reviewed by the licensed mental-health professional who approved the launch version.
+**Safety changes need review.** Changes to `config/safety.yaml`, or to the "Safety" and "What you are not" sections of `prompts/conversation.md`, should be reviewed by the licensed mental-health professional who approved the launch version. Run `npm run safety-packet` to produce an up-to-date `docs/safety-review.md` for them.
+
+**Privacy page.** If you change what MeaningEngine collects (for example, adding email), update `/about` (`app/about/page.tsx`) to match.
 
 ## Choose the model (and the cost)
 

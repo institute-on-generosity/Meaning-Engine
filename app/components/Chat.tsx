@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { citedTags, type Citation } from "@/lib/citations";
 import type { Reflection } from "@/lib/reflection";
@@ -32,7 +33,8 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    endRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
   }, [messages, reflection, reflecting]);
 
   useEffect(() => {
@@ -192,6 +194,7 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
             </p>
             <button
               className="btn-dark"
+              autoFocus
               onClick={() => {
                 lastActivity.current = Date.now();
                 setCountdown(null);
@@ -203,11 +206,15 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
         </div>
       )}
       <div className="shell">
-      <main className="thread" aria-live="polite">
+      <main className="thread" role="log" aria-live="polite" aria-labelledby="thread-title">
+        <h1 id="thread-title" className="visually-hidden">
+          Conversation with MeaningEngine
+        </h1>
         <AssistantBubble content={opening} sources={[]} />
         {messages.map((m, i) =>
           m.role === "user" ? (
             <div key={i} className="msg user">
+              <span className="visually-hidden">You said: </span>
               <RichText text={m.content} />
             </div>
           ) : m.role === "assistant" ? (
@@ -219,7 +226,7 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
           ),
         )}
         {busy && messages[messages.length - 1]?.role === "user" && (
-          <div className="msg assistant typing" aria-label="MeaningEngine is thinking">
+          <div className="msg assistant typing" role="status" aria-label="MeaningEngine is thinking">
             <span />
             <span />
             <span />
@@ -273,7 +280,16 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
         </form>
         <p className="fineprint">
           An AI reflection tool, not a therapist or financial advisor. In crisis? Call or text 988 (US).
-          {kiosk && " This screen clears itself after a few minutes without activity."}
+          {kiosk ? (
+            " This screen clears itself after a few minutes without activity."
+          ) : (
+            <>
+              {" "}
+              <a href="/about" target="_blank" rel="noreferrer">
+                About &amp; privacy
+              </a>
+            </>
+          )}
         </p>
       </footer>
       </div>
@@ -363,6 +379,9 @@ function Intro({ onBegin, kiosk }: { onBegin: () => void; kiosk: boolean }) {
                 In crisis or thinking about harming yourself? Call or text <strong>988</strong> (US) or visit
                 findahelpline.com.
               </li>
+              <li>
+                <Link href={kiosk ? "/about?from=kiosk" : "/about"}>About MeaningEngine &amp; your privacy</Link>
+              </li>
             </ul>
             <button className="btn-lime" onClick={onBegin}>
               Begin →
@@ -389,6 +408,7 @@ function AssistantBubble({ content, sources, streaming }: { content: string; sou
   const cited = streaming ? [] : citedTags(content).flatMap((t) => sources.find((s) => s.tag === t) ?? []);
   return (
     <div className="msg assistant">
+      <span className="visually-hidden">MeaningEngine: </span>
       <RichText text={content} sources={sources} />
       {cited.length > 0 && (
         <ol className="sources" aria-label="Sources">
@@ -605,12 +625,11 @@ function SurveyCard({ turns, mode }: { turns: number; mode: "web" | "kiosk" }) {
       <p id="survey-q" className="survey-q">
         How would you describe this conversation?
       </p>
-      <div className="ratings" role="radiogroup" aria-labelledby="survey-q">
+      <div className="ratings" role="group" aria-labelledby="survey-q">
         {RATINGS.map(([value, label]) => (
           <button
             key={value}
-            role="radio"
-            aria-checked={rating === value}
+            aria-pressed={rating === value}
             className={rating === value ? "rating selected" : "rating"}
             onClick={() => setRating(value)}
           >

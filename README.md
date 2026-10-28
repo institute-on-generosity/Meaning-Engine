@@ -4,7 +4,7 @@ A conversational reflection tool from the Institute on Generosity (IoG). A perso
 
 It is explicitly **not** a therapist or a financial advisor. It's a structured reflection companion.
 
-**IoG staff:** day-to-day upkeep (updating guides, changing the model, survey results, convenings) is in the [staff guide](docs/staff-guide.md).
+**IoG staff:** day-to-day upkeep (updating guides, changing the model, survey results, convenings) is in the [staff guide](docs/staff-guide.md). What's left before launch is in the [launch checklist](docs/launch-checklist.md).
 
 ## How it works
 
@@ -21,6 +21,9 @@ Also included:
 - **Anonymous usage events** (session started, reflection created, survey answer), printed to the server log. If `FEEDBACK_WEBHOOK_URL` is set, they're also posted there, for example to a Google Sheet. Conversation text is never included.
 - **Kiosk mode** at `/kiosk` for convenings. It clears itself after inactivity, and visitors can print but not download.
 - **Abuse limits.** The API only accepts requests from the site itself, with per-network rate limits set in `config/engine.yaml`.
+- **About & privacy page** at `/about`: what the tool draws on, what it isn't, and what happens to what visitors type.
+- **Embedding.** Pages on `instituteongenerosity.org` may show MeaningEngine in an iframe; other sites can't. Change this with `EMBED_ALLOWED_ORIGINS`.
+- **Safety review packet.** `npm run safety-packet` writes `docs/safety-review.md` from the live safety rules, for the licensed professional who reviews them.
 
 ## Running it locally
 
@@ -34,6 +37,7 @@ npm run corpus -- --dry         # check what will be uploaded (no API calls)
 npm run corpus                  # upload the documents, write config/corpus.json
 npm run dev                     # http://localhost:3000
 npm run compare                 # plan a side-by-side model comparison (add --yes to run it)
+npm run safety-packet           # regenerate docs/safety-review.md
 ```
 
 ## IoG's corpus
@@ -99,6 +103,8 @@ npm test          # crisis detection, citation numbering, text cleanup, rate lim
 npm run typecheck
 ```
 
+GitHub runs the typecheck, tests, and a production build on every push (`.github/workflows/checks.yml`).
+
 ## Status
 
 - [x] IoG's 13 Giving Guides as the full grounding corpus, with quoted citations
@@ -109,6 +115,8 @@ npm run typecheck
 - [x] Post-session survey and anonymous usage events
 - [x] Kiosk mode for convenings
 - [x] Model comparison script and staff guide
+- [x] About & privacy page, security headers, accessibility pass (WCAG AA contrast, screen-reader labels)
+- [x] Safety review packet, launch checklist, automatic checks on GitHub
 - [ ] **Licensed professional review of `config/safety.yaml` and the safety section of `prompts/conversation.md` (required before public launch)**
 - [ ] Upload the corpus with IoG's Anthropic key; run `npm run compare -- --yes`; pick the model
 - [ ] Conversation design workshop with IoG staff; tune `prompts/conversation.md`
