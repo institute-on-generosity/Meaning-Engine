@@ -22,10 +22,19 @@ export interface Turn {
   content: string;
 }
 
+export interface Usage {
+  model: string;
+  input: number;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
+}
+
 export type ReplyEvent =
   | { type: "text"; text: string }
   | { type: "citation"; citation: Citation }
-  | { type: "declined" };
+  | { type: "declined" }
+  | { type: "usage"; usage: Usage };
 
 export interface ChatProvider {
   /** Stream the next assistant reply, citing the corpus documents it relies on. */
@@ -44,6 +53,7 @@ export interface ChatProvider {
     prompt: string;
     documents: CorpusDoc[];
     schema: z.ZodType<T>;
+    onUsage?: (usage: Usage) => void;
   }): Promise<T>;
 }
 
@@ -121,9 +131,17 @@ class AnthropicProvider implements ChatProvider {
     const final = await stream.finalMessage();
     if (final.stop_reason === "refusal") yield { type: "declined" };
     const u = final.usage;
+    const usage: Usage = {
+      model: final.model,
+      input: u.input_tokens,
+      cacheRead: u.cache_read_input_tokens ?? 0,
+      cacheWrite: u.cache_creation_input_tokens ?? 0,
+      output: u.output_tokens,
+    };
     console.info(
-      `[chat] ${final.model}: ${u.input_tokens} in, ${u.cache_read_input_tokens ?? 0} cache read, ${u.cache_creation_input_tokens ?? 0} cache write / ${u.output_tokens} out`,
+      `[chat] ${usage.model}: ${usage.input} in, ${usage.cacheRead} cache read, ${usage.cacheWrite} cache write / ${usage.output} out`,
     );
+    yield { type: "usage", usage };
   }
 
   async structured<T>({
@@ -133,6 +151,7 @@ class AnthropicProvider implements ChatProvider {
     prompt,
     documents,
     schema,
+    onUsage,
   }: {
     model: string;
     effort: Effort;
@@ -140,6 +159,7 @@ class AnthropicProvider implements ChatProvider {
     prompt: string;
     documents: CorpusDoc[];
     schema: z.ZodType<T>;
+    onUsage?: (usage: Usage) => void;
   }): Promise<T> {
     // Citations can't be combined with structured output, so documents go in without them.
     const resp = await this.client.beta.messages.parse({
@@ -153,7 +173,15 @@ class AnthropicProvider implements ChatProvider {
     if (resp.stop_reason === "refusal") throw new ModelDeclinedError(`${model} declined the request`);
     if (resp.stop_reason === "max_tokens") throw new Error(`${model} hit max_tokens; output truncated`);
     if (!resp.parsed_output) throw new Error(`${model} returned output that didn't match the schema`);
-    console.info(`[reflection] ${resp.model}: ${resp.usage.input_tokens} in / ${resp.usage.output_tokens} out`);
+    const u = resp.usage;
+    onUsage?.({
+      model: resp.model,
+      input: u.input_tokens,
+      cacheRead: u.cache_read_input_tokens ?? 0,
+      cacheWrite: u.cache_creation_input_tokens ?? 0,
+      output: u.output_tokens,
+    });
+    console.info(`[reflection] ${resp.model}: ${u.input_tokens} in, ${u.cache_read_input_tokens ?? 0} cache read / ${u.output_tokens} out`);
     return resp.parsed_output as T;
   }
 

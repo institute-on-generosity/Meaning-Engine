@@ -10,3 +10,6 @@ next-env.d.ts
 corpus/iog/*
 !corpus/iog/README.md
 
+
+# Model comparison reports (`npm run compare`)
+evals/out/

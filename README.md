@@ -4,6 +4,8 @@ A conversational reflection tool from the Institute on Generosity (IoG). A perso
 
 It is explicitly **not** a therapist or a financial advisor. It's a structured reflection companion.
 
+**IoG staff:** day-to-day upkeep (updating guides, changing the model, survey results, convenings) is in the [staff guide](docs/staff-guide.md).
+
 ## How it works
 
 1. **IoG's corpus.** IoG's documents (currently the 13 GG2026 Giving Guides) go in `corpus/iog/`. `npm run corpus` extracts each one's text and uploads it to Anthropic's file storage, then records the file ids in `config/corpus.json`. These documents are the tool's only source: the prompts forbid outside studies, statistics, and frameworks.
@@ -12,6 +14,13 @@ It is explicitly **not** a therapist or a financial advisor. It's a structured r
 4. **Reflection.** After a few exchanges, a "Create my reflection" button appears. Claude writes a structured reflection: a summary, values, practices to try, and questions to keep. Each practice can name the guides it draws on; the code keeps only titles that match a real document.
 
 Conversations are not stored. Everything lives in the browser tab until it's closed.
+
+Also included:
+
+- **Post-session survey.** After the reflection, one question ("insightful / useful / neutral / not useful") plus an optional comment.
+- **Anonymous usage events** (session started, reflection created, survey answer), printed to the server log. If `FEEDBACK_WEBHOOK_URL` is set, they're also posted there, for example to a Google Sheet. Conversation text is never included.
+- **Kiosk mode** at `/kiosk` for convenings. It clears itself after inactivity, and visitors can print but not download.
+- **Abuse limits.** The API only accepts requests from the site itself, with per-network rate limits set in `config/engine.yaml`.
 
 ## Running it locally
 
@@ -24,6 +33,7 @@ set -a; source .env.local; set +a
 npm run corpus -- --dry         # check what will be uploaded (no API calls)
 npm run corpus                  # upload the documents, write config/corpus.json
 npm run dev                     # http://localhost:3000
+npm run compare                 # plan a side-by-side model comparison (add --yes to run it)
 ```
 
 ## IoG's corpus
@@ -78,13 +88,14 @@ The server log prints input, cache-read, cache-write, and output tokens for ever
 ## Deploying
 
 1. Import the repo into Vercel, or IoG's usual host. Vercel's free plan is for non-commercial personal use, so use its paid plan for an IoG site.
-2. Add `ANTHROPIC_API_KEY` under **Settings → Environment Variables**. Use a key from the account that uploaded the corpus.
-3. Deploy. `config/corpus.json` in the repo tells the site which uploaded documents to read.
+2. Add `ANTHROPIC_API_KEY` under **Settings → Environment Variables**. Use a key from the account that uploaded the corpus. Optionally, add `FEEDBACK_WEBHOOK_URL` to collect survey answers.
+3. Set a monthly spend limit on that Anthropic workspace. The in-app rate limits only slow down a single network; the spend limit is what caps the bill.
+4. Deploy. `config/corpus.json` in the repo tells the site which uploaded documents to read.
 
 ## Tests
 
 ```bash
-npm test          # crisis detection, citation numbering, text cleanup
+npm test          # crisis detection, citation numbering, text cleanup, rate limits
 npm run typecheck
 ```
 
@@ -94,9 +105,11 @@ npm run typecheck
 - [x] Conversation design (prompt), crisis interception, scope limits
 - [x] End-of-session giving reflection with download / copy / print
 - [x] IoG branding (2026 brand guide palette and type, Prompt Library layout)
+- [x] Rate limiting and same-origin check
+- [x] Post-session survey and anonymous usage events
+- [x] Kiosk mode for convenings
+- [x] Model comparison script and staff guide
 - [ ] **Licensed professional review of `config/safety.yaml` and the safety section of `prompts/conversation.md` (required before public launch)**
-- [ ] Upload the corpus with IoG's Anthropic key; test conversations; pick the model
+- [ ] Upload the corpus with IoG's Anthropic key; run `npm run compare -- --yes`; pick the model
 - [ ] Conversation design workshop with IoG staff; tune `prompts/conversation.md`
-- [ ] Rate limiting for the public endpoint
 - [ ] Optional accounts and saved sessions; email the reflection
-- [ ] Kiosk mode for convenings; post-session survey

@@ -12,6 +12,14 @@ const EngineConfig = z.object({
     reflection_model: z.string(),
     reflection_effort: z.enum(["low", "medium", "high", "xhigh", "max"]),
   }),
+  limits: z.object({
+    chat_per_ip_per_10_min: z.number().int().positive(),
+    reflections_per_ip_per_hour: z.number().int().positive(),
+  }),
+  kiosk: z.object({
+    idle_seconds: z.number().int().positive(),
+    warning_seconds: z.number().int().positive(),
+  }),
   session: z.object({
     max_user_turns: z.number().int().positive(),
     max_message_chars: z.number().int().positive(),

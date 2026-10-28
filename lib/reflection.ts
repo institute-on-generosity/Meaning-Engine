@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { corpus, engineConfig, prompt } from "./config";
-import { getProvider, type Turn } from "./llm";
+import { getProvider, type Turn, type Usage } from "./llm";
 
 export const ReflectionSchema = z.object({
   title: z.string().describe("A short, personal title for this reflection, under 60 characters."),
@@ -29,7 +29,10 @@ export interface Reflection extends ReflectionDraft {
   createdAt: string;
 }
 
-export async function createReflection(messages: Turn[]): Promise<Reflection> {
+export async function createReflection(
+  messages: Turn[],
+  options: { model?: string; onUsage?: (usage: Usage) => void } = {},
+): Promise<Reflection> {
   const config = engineConfig();
   const documents = corpus();
   const transcript = messages
@@ -40,12 +43,13 @@ export async function createReflection(messages: Turn[]): Promise<Reflection> {
     .join("\n");
 
   const draft = await getProvider().structured({
-    model: config.llm.reflection_model,
+    model: options.model ?? config.llm.reflection_model,
     effort: config.llm.reflection_effort,
     system: prompt("reflection"),
     prompt: `<conversation>\n${transcript}\n</conversation>\n\nWrite this person's giving reflection.`,
     documents,
     schema: ReflectionSchema,
+    onUsage: options.onUsage,
   });
 
   // Guide titles come from the corpus, never from the model: anything that isn't a real title is dropped.

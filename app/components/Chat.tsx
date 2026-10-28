@@ -13,9 +13,12 @@ interface Props {
   opening: string;
   reflectionAfter: number;
   maxChars: number;
+  /** Shared-screen mode for convenings: clears itself when idle and offers no downloads. */
+  kiosk?: { idleSeconds: number; warningSeconds: number };
 }
 
-export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
+export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Props) {
+  const mode = kiosk ? "kiosk" : "web";
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -23,7 +26,9 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
   const [reflection, setReflection] = useState<Reflection | null>(null);
   const [reflecting, setReflecting] = useState(false);
   const [reflectionError, setReflectionError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const lastActivity = useRef(Date.now());
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -33,6 +38,32 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
   useEffect(() => {
     if (started && !busy) inputRef.current?.focus();
   }, [started, busy]);
+
+  // Kiosk: after `idleSeconds` without activity, clear everything for the next person.
+  useEffect(() => {
+    if (!kiosk || !started) return;
+    const bump = () => {
+      lastActivity.current = Date.now();
+      setCountdown(null);
+    };
+    const events = ["pointerdown", "keydown", "input", "scroll", "touchstart"] as const;
+    events.forEach((e) => window.addEventListener(e, bump, { passive: true }));
+    bump();
+    const timer = setInterval(() => {
+      const left = kiosk.idleSeconds - Math.floor((Date.now() - lastActivity.current) / 1000);
+      if (left <= 0) clearAll();
+      else setCountdown(left <= kiosk.warningSeconds ? left : null);
+    }, 1000);
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, bump));
+      clearInterval(timer);
+    };
+  }, [kiosk, started]);
+
+  // A reply or reflection arriving counts as activity, so nobody is cleared mid-read.
+  useEffect(() => {
+    lastActivity.current = Date.now();
+  }, [messages, reflection, busy, reflecting]);
 
   const userTurns = messages.filter((m) => m.role === "user").length;
 
@@ -60,7 +91,7 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: transcript(next) }),
+        body: JSON.stringify({ messages: transcript(next), mode }),
       });
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => ({}));
@@ -113,7 +144,7 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
       const res = await fetch("/api/reflection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: transcript(messages) }),
+        body: JSON.stringify({ messages: transcript(messages), mode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong. Please try again.");
@@ -125,19 +156,52 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
     }
   }
 
-  function restart() {
-    if (messages.length && !confirm("Start over? This conversation will be cleared.")) return;
+  function clearConversation() {
     setMessages([]);
     setReflection(null);
     setReflectionError(null);
     setDraft("");
+    setCountdown(null);
   }
 
-  if (!started) return <Intro onBegin={() => setStarted(true)} />;
+  /** Back to the welcome screen with nothing left behind (kiosk end of session). */
+  function clearAll() {
+    clearConversation();
+    setStarted(false);
+    window.scrollTo(0, 0);
+  }
+
+  function restart() {
+    const question = kiosk ? "End this session? Everything on screen will be cleared." : "Start over? This conversation will be cleared.";
+    if (messages.length && !confirm(question)) return;
+    if (kiosk) clearAll();
+    else clearConversation();
+  }
+
+  if (!started) return <Intro kiosk={!!kiosk} onBegin={() => setStarted(true)} />;
 
   return (
     <div className="app">
-      <Header onRestart={restart} />
+      <Header onRestart={restart} restartLabel={kiosk ? "End session" : "Start over"} />
+      {countdown !== null && (
+        <div className="idle" role="alertdialog" aria-labelledby="idle-title">
+          <div className="idle-card">
+            <p id="idle-title" className="idle-title">Still there?</p>
+            <p>
+              This screen will clear for the next person in {countdown} {countdown === 1 ? "second" : "seconds"}.
+            </p>
+            <button
+              className="btn-dark"
+              onClick={() => {
+                lastActivity.current = Date.now();
+                setCountdown(null);
+              }}
+            >
+              I&rsquo;m still here
+            </button>
+          </div>
+        </div>
+      )}
       <div className="shell">
       <main className="thread" aria-live="polite">
         <AssistantBubble content={opening} sources={[]} />
@@ -163,7 +227,12 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
         )}
         {reflecting && <p className="status">Writing your reflection…</p>}
         {reflectionError && <p className="status error">{reflectionError}</p>}
-        {reflection && <ReflectionCard reflection={reflection} />}
+        {reflection && (
+          <>
+            <ReflectionCard reflection={reflection} kiosk={!!kiosk} onFinish={clearAll} />
+            <SurveyCard turns={userTurns} mode={mode} />
+          </>
+        )}
         <div ref={endRef} />
       </main>
 
@@ -204,6 +273,7 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
         </form>
         <p className="fineprint">
           An AI reflection tool, not a therapist or financial advisor. In crisis? Call or text 988 (US).
+          {kiosk && " This screen clears itself after a few minutes without activity."}
         </p>
       </footer>
       </div>
@@ -211,7 +281,7 @@ export default function Chat({ opening, reflectionAfter, maxChars }: Props) {
   );
 }
 
-function Header({ onRestart }: { onRestart?: () => void }) {
+function Header({ onRestart, restartLabel = "Start over" }: { onRestart?: () => void; restartLabel?: string }) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -221,7 +291,7 @@ function Header({ onRestart }: { onRestart?: () => void }) {
         </div>
         {onRestart && (
           <button className="ghost" onClick={onRestart}>
-            Start over
+            {restartLabel}
           </button>
         )}
       </div>
@@ -237,7 +307,7 @@ const STAGES = [
   ["Intention", "One small, concrete practice you want to try, and a written reflection to keep."],
 ];
 
-function Intro({ onBegin }: { onBegin: () => void }) {
+function Intro({ onBegin, kiosk }: { onBegin: () => void; kiosk: boolean }) {
   return (
     <div className="app">
       <Header />
@@ -284,7 +354,11 @@ function Intro({ onBegin }: { onBegin: () => void }) {
             <ul className="fine">
               <li>It&rsquo;s an AI, not a therapist or a financial advisor, and it can be wrong.</li>
               <li>When it shares IoG research it cites the source so you can check.</li>
-              <li>Your conversation disappears when you close this page.</li>
+              <li>
+                {kiosk
+                  ? "Your conversation is cleared from this screen when you finish or step away."
+                  : "Your conversation disappears when you close this page."}
+              </li>
               <li>
                 In crisis or thinking about harming yourself? Call or text <strong>988</strong> (US) or visit
                 findahelpline.com.
@@ -414,7 +488,7 @@ function reflectionAsMarkdown(r: Reflection): string {
   return lines.join("\n");
 }
 
-function ReflectionCard({ reflection: r }: { reflection: Reflection }) {
+function ReflectionCard({ reflection: r, kiosk, onFinish }: { reflection: Reflection; kiosk: boolean; onFinish: () => void }) {
   const [copied, setCopied] = useState(false);
 
   function download() {
@@ -470,11 +544,96 @@ function ReflectionCard({ reflection: r }: { reflection: Reflection }) {
         ))}
       </ul>
 
+      {/* On a shared kiosk screen, nothing is saved to the device: print, then clear. */}
       <div className="actions">
-        <button onClick={download}>Download</button>
-        <button onClick={copy}>{copied ? "Copied" : "Copy text"}</button>
-        <button onClick={() => window.print()}>Print</button>
+        {kiosk ? (
+          <>
+            <button onClick={() => window.print()}>Print</button>
+            <button onClick={onFinish}>Finish and clear the screen</button>
+          </>
+        ) : (
+          <>
+            <button onClick={download}>Download</button>
+            <button onClick={copy}>{copied ? "Copied" : "Copy text"}</button>
+            <button onClick={() => window.print()}>Print</button>
+          </>
+        )}
       </div>
     </article>
+  );
+}
+
+const RATINGS = [
+  ["insightful", "Insightful"],
+  ["useful", "Useful"],
+  ["neutral", "Neutral"],
+  ["not_useful", "Not useful"],
+] as const;
+
+/** One-question post-session survey (the proposal's "insightful or useful" metric). Anonymous. */
+function SurveyCard({ turns, mode }: { turns: number; mode: "web" | "kiosk" }) {
+  const [rating, setRating] = useState<(typeof RATINGS)[number][0] | null>(null);
+  const [comment, setComment] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  async function submit() {
+    if (!rating) return;
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating, comment, turns, mode }),
+      });
+      setStatus(res.ok ? "sent" : "error");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  if (status === "sent") {
+    return (
+      <section className="survey" aria-live="polite">
+        <p className="survey-thanks">Thank you. Your answer helps IoG improve MeaningEngine.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="survey" aria-labelledby="survey-q">
+      <p className="eyebrow">One quick question</p>
+      <p id="survey-q" className="survey-q">
+        How would you describe this conversation?
+      </p>
+      <div className="ratings" role="radiogroup" aria-labelledby="survey-q">
+        {RATINGS.map(([value, label]) => (
+          <button
+            key={value}
+            role="radio"
+            aria-checked={rating === value}
+            className={rating === value ? "rating selected" : "rating"}
+            onClick={() => setRating(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <label htmlFor="survey-comment" className="survey-label">
+        Anything else? <span>(optional, anonymous)</span>
+      </label>
+      <textarea
+        id="survey-comment"
+        value={comment}
+        maxLength={1000}
+        rows={2}
+        onChange={(e) => setComment(e.target.value)}
+      />
+      <div className="survey-actions">
+        <button className="btn-dark" onClick={submit} disabled={!rating || status === "sending"}>
+          {status === "sending" ? "Sending…" : "Send"}
+        </button>
+        {status === "error" && <span className="survey-error">That didn&rsquo;t go through. Please try again.</span>}
+      </div>
+    </section>
   );
 }

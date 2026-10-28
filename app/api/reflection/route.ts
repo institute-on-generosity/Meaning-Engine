@@ -2,15 +2,22 @@ import { ZodError } from "zod";
 import { engineConfig } from "@/lib/config";
 import { ModelDeclinedError } from "@/lib/llm";
 import { createReflection } from "@/lib/reflection";
+import { modeOf, recordEvent } from "@/lib/events";
+import { guard } from "@/lib/guard";
 import { parseTranscript, userTurns } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
+  const blocked = guard(req, "reflection", engineConfig().limits.reflections_per_ip_per_hour, 60 * 60_000);
+  if (blocked) return blocked;
+
   let messages;
+  let body: unknown;
   try {
-    messages = parseTranscript(await req.json());
+    body = await req.json();
+    messages = parseTranscript(body);
   } catch (err) {
     const detail = err instanceof ZodError ? err.issues[0]?.message : "invalid JSON";
     return Response.json({ error: `Bad request: ${detail}` }, { status: 400 });
@@ -19,7 +26,14 @@ export async function POST(req: Request) {
     return Response.json({ error: "Talk a little longer before creating a reflection." }, { status: 400 });
   }
   try {
-    return Response.json(await createReflection(messages));
+    const reflection = await createReflection(messages);
+    await recordEvent({
+      type: "reflection_created",
+      mode: modeOf(body),
+      turns: userTurns(messages),
+      model: engineConfig().llm.reflection_model,
+    });
+    return Response.json(reflection);
   } catch (err) {
     console.error("[reflection] failed:", err);
     const text =

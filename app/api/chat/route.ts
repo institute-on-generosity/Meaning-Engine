@@ -2,6 +2,8 @@ import { ZodError } from "zod";
 import { corpus, engineConfig, prompt, safetyConfig } from "@/lib/config";
 import { getProvider } from "@/lib/llm";
 import { detectCrisis } from "@/lib/safety";
+import { modeOf, recordEvent } from "@/lib/events";
+import { guard } from "@/lib/guard";
 import { parseTranscript, userTurns } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -17,14 +19,19 @@ export const maxDuration = 60;
  *   {"type":"done"}
  */
 export async function POST(req: Request) {
+  const config = engineConfig();
+  const blocked = guard(req, "chat", config.limits.chat_per_ip_per_10_min, 10 * 60_000);
+  if (blocked) return blocked;
+
   let messages;
+  let payload: unknown;
   try {
-    messages = parseTranscript(await req.json());
+    payload = await req.json();
+    messages = parseTranscript(payload);
   } catch (err) {
     const detail = err instanceof ZodError ? err.issues[0]?.message : "invalid JSON";
     return Response.json({ error: `Bad request: ${detail}` }, { status: 400 });
   }
-  const config = engineConfig();
   const latest = messages[messages.length - 1];
   if (latest.role !== "user") return Response.json({ error: "Last message must be from the user" }, { status: 400 });
 
@@ -42,6 +49,8 @@ export async function POST(req: Request) {
           return;
         }
 
+        if (userTurns(messages) === 1) await recordEvent({ type: "session_started", mode: modeOf(payload) });
+
         for await (const event of getProvider().streamReply({
           model: config.llm.chat_model,
           effort: config.llm.chat_effort,
@@ -51,7 +60,7 @@ export async function POST(req: Request) {
         })) {
           if (event.type === "declined") {
             send({ type: "notice", text: "I wasn't able to respond to that. Could you put it another way?" });
-          } else {
+          } else if (event.type === "text" || event.type === "citation") {
             send(event);
           }
         }

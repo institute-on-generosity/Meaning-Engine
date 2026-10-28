@@ -11,6 +11,17 @@ llm:
   reflection_model: claude-opus-5-5
   reflection_effort: medium
 
+limits:
+  # Per visitor IP. A whole convening on one Wi-Fi network shares an IP, so keep these generous;
+  # the Anthropic workspace's monthly spend limit is the real cost cap (see docs/staff-guide.md).
+  chat_per_ip_per_10_min: 120
+  reflections_per_ip_per_hour: 30
+
+kiosk:
+  # At /kiosk, the screen clears for the next person after this much inactivity.
+  idle_seconds: 180
+  warning_seconds: 30       # how long the "Still there?" countdown shows before clearing
+
 session:
   max_user_turns: 40        # hard stop for a single session
   max_message_chars: 4000
