@@ -10,7 +10,7 @@ Everything between today and a public launch, in order. Items marked **IoG** nee
 
 ## 2. Choose the model and tune the conversation
 
-- [x] Run `npm run compare -- --yes` (about $4–5) and read `evals/out/<date>/report.md`.
+- [x] Run `npm run compare -- --yes` (about $6 for all three models) and read `evals/out/<date>/report.md`.
 - [x] **IoG:** pick the model: Claude Haiku 5.5 (November 2026), after side-by-side tests with Opus
 - [ ] **IoG:** decide whether to include all of *Policy Advocacy* and *Philanthropic Asset Portfolio*, or only the core pages. Including all of them raises the cost of every session.
 - [ ] **IoG:** conversation design session with staff. Try the test site, then adjust `prompts/conversation.md` and the opening message.

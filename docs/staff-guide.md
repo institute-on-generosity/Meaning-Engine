@@ -56,7 +56,7 @@ The model is set in `config/engine.yaml` (`chat_model` and `reflection_model`). 
 To compare them on the same test conversations:
 
 ```bash
-npm run compare            # shows what it will run and the estimated cost (about $4–5)
+npm run compare            # shows what it will run and the estimated cost (about $6 for all three models, $0.60 for Haiku alone)
 npm run compare -- --yes   # runs it and writes evals/out/<date>/report.md
 ```
 
@@ -67,6 +67,8 @@ The report shows each model's replies, citations, reflections, and cost side by 
 1. **Set a monthly spend limit** in the Anthropic Console (**Settings → Limits**) for the workspace MeaningEngine uses. This is the real cap: past the limit, the site stops answering rather than running up a bill.
 2. **Built-in limits:** each visitor's network is capped at 120 messages per 10 minutes and 30 reflections per hour (`limits:` in `config/engine.yaml`). A whole convening on one Wi-Fi network shares one network address, so keep these generous.
 3. **Only the MeaningEngine site can use the API**; requests from other websites are refused.
+4. **Each reply is capped** at 2,500 output tokens and each reflection at 4,000 (`max_reply_tokens` and `max_reflection_tokens` in `config/engine.yaml`). Normal replies use 120–250, so this only stops runaway output. If a reply is ever cut off, the visitor sees a note offering to continue.
+5. **It stays on its job.** The conversation instructions tell it to decline unrelated tasks, refuse to reveal its instructions, and not hand out whole guides. After changing `prompts/conversation.md`, re-run `npm run compare -- --yes --models claude-haiku-5-5` and check the three "Guardrail:" conversations in the report.
 
 ## See how it's doing
 

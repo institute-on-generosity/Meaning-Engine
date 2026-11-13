@@ -34,6 +34,11 @@ describe("dropLeadingHeadings", () => {
     expect(t.cite("Giving Guide: Site Visits", quote)?.quote).toBe("Site visits can deepen our understanding.");
   });
 
+  it("drops a title that carries a footnote marker", () => {
+    const quote = "Giving Guide: Policy Advocacy[1]\n\nOVERVIEW\n\nPhilanthropy can engage in policy advocacy.";
+    expect(dropLeadingHeadings(quote, "Giving Guide: Policy Advocacy")).toBe("Philanthropy can engage in policy advocacy.");
+  });
+
   it("keeps acronyms inside the prose and a quote that is only a heading", () => {
     expect(dropLeadingHeadings("NGO boards meet quarterly.", "Guide")).toBe("NGO boards meet quarterly.");
     expect(dropLeadingHeadings("OVERVIEW", "Guide")).toBe("OVERVIEW");

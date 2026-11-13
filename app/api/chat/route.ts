@@ -57,9 +57,12 @@ export async function POST(req: Request) {
           system: `${prompt("conversation")}\n\nThe session opened with this message from you:\n"${config.opening_message}"`,
           history: messages,
           documents: corpus(),
+          maxTokens: config.llm.max_reply_tokens,
         })) {
           if (event.type === "declined") {
             send({ type: "notice", text: "I wasn't able to respond to that. Could you put it another way?" });
+          } else if (event.type === "truncated") {
+            send({ type: "notice", text: "That reply was cut short. Ask me to continue if you'd like the rest." });
           } else if (event.type === "text" || event.type === "citation") {
             send(event);
           }

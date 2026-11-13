@@ -11,6 +11,8 @@ const EngineConfig = z.object({
     chat_effort: z.enum(["low", "medium", "high", "xhigh", "max"]),
     reflection_model: z.string(),
     reflection_effort: z.enum(["low", "medium", "high", "xhigh", "max"]),
+    max_reply_tokens: z.number().int().positive(),
+    max_reflection_tokens: z.number().int().positive(),
   }),
   limits: z.object({
     chat_per_ip_per_10_min: z.number().int().positive(),

@@ -34,6 +34,7 @@ export type ReplyEvent =
   | { type: "text"; text: string }
   | { type: "citation"; citation: Citation }
   | { type: "declined" }
+  | { type: "truncated" }
   | { type: "usage"; usage: Usage };
 
 export interface ChatProvider {
@@ -44,6 +45,7 @@ export interface ChatProvider {
     system: string;
     history: Turn[];
     documents: CorpusDoc[];
+    maxTokens: number;
   }): AsyncGenerator<ReplyEvent>;
 
   structured<T>(opts: {
@@ -53,6 +55,7 @@ export interface ChatProvider {
     prompt: string;
     documents: CorpusDoc[];
     schema: z.ZodType<T>;
+    maxTokens: number;
     onUsage?: (usage: Usage) => void;
   }): Promise<T>;
 }
@@ -92,6 +95,7 @@ class AnthropicProvider implements ChatProvider {
     system,
     history,
     documents,
+    maxTokens,
   }: Parameters<ChatProvider["streamReply"]>[0]): AsyncGenerator<ReplyEvent> {
     const messages: Anthropic.Beta.BetaMessageParam[] = history.map((t, i) => {
       const last = i === history.length - 1;
@@ -106,7 +110,7 @@ class AnthropicProvider implements ChatProvider {
 
     const stream = this.client.beta.messages.stream({
       model,
-      max_tokens: 16000,
+      max_tokens: maxTokens,
       system: [{ type: "text", text: system, cache_control: CACHE }],
       messages,
       output_config: { effort },
@@ -136,6 +140,7 @@ class AnthropicProvider implements ChatProvider {
     }
     const final = await stream.finalMessage();
     if (final.stop_reason === "refusal") yield { type: "declined" };
+    if (final.stop_reason === "max_tokens") yield { type: "truncated" };
     const u = final.usage;
     const usage: Usage = {
       model: final.model,
@@ -157,6 +162,7 @@ class AnthropicProvider implements ChatProvider {
     prompt,
     documents,
     schema,
+    maxTokens,
     onUsage,
   }: {
     model: string;
@@ -165,12 +171,13 @@ class AnthropicProvider implements ChatProvider {
     prompt: string;
     documents: CorpusDoc[];
     schema: z.ZodType<T>;
+    maxTokens: number;
     onUsage?: (usage: Usage) => void;
   }): Promise<T> {
     // Citations can't be combined with structured output, so documents go in without them.
     const resp = await this.client.beta.messages.parse({
       model,
-      max_tokens: 16000,
+      max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: [...this.documentBlocks(documents, false), { type: "text", text: prompt }] }],
       output_config: { effort, format: zodOutputFormat(schema) },

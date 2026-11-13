@@ -22,7 +22,12 @@ export function citedTags(text: string): string[] {
  */
 export function dropLeadingHeadings(quote: string, title: string): string {
   const lines = quote.trim().split(/\n+/);
-  while (lines.length > 1 && (lines[0].trim() === title || !/[a-z]/.test(lines[0]))) lines.shift();
+  // Footnote markers ("Giving Guide: Policy Advocacy[1]") don't stop a line from being the title.
+  const isHeading = (line: string) => {
+    const bare = line.replace(/\[\d+\]/g, "").trim();
+    return bare === title || !/[a-z]/.test(bare);
+  };
+  while (lines.length > 1 && isHeading(lines[0])) lines.shift();
   return lines.join("\n");
 }
 

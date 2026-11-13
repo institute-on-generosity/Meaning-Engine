@@ -12,6 +12,10 @@ llm:
   # The end-of-session giving reflection.
   reflection_model: claude-haiku-5-5
   reflection_effort: medium
+  # Hard caps on output per call, which bound the cost of any one reply. Typical replies use
+  # 120-250 tokens (including the model's thinking) and a reflection about 1,200.
+  max_reply_tokens: 2500
+  max_reflection_tokens: 4000
 
 limits:
   # Per visitor IP. A whole convening on one Wi-Fi network shares an IP, so keep these generous;

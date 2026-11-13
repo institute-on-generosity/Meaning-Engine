@@ -68,6 +68,7 @@ export async function createReflection(
     prompt: `<cited_passages>\n${sources}\n</cited_passages>\n\n<conversation>\n${transcript}\n</conversation>\n\nWrite this person's giving reflection.`,
     documents: [],
     schema: ReflectionSchema,
+    maxTokens: config.llm.max_reflection_tokens,
     onUsage: options.onUsage,
   });
 

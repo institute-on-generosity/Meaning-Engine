@@ -20,7 +20,8 @@ Also included:
 - **Post-session survey.** After the reflection, one question ("insightful / useful / neutral / not useful") plus an optional comment.
 - **Anonymous usage events** (session started, reflection created, survey answer), printed to the server log. If `FEEDBACK_WEBHOOK_URL` is set, they're also posted there, for example to a Google Sheet. Conversation text is never included.
 - **Kiosk mode** at `/kiosk` for convenings. It clears itself after inactivity, and visitors can print but not download.
-- **Abuse limits.** The API only accepts requests from the site itself, with per-network rate limits set in `config/engine.yaml`.
+- **Abuse limits.** The API only accepts requests from the site itself, with per-network rate limits set in `config/engine.yaml`. Each reply is capped at 2,500 output tokens and each reflection at 4,000 (`max_reply_tokens`, `max_reflection_tokens`), which bounds the cost of any single call.
+- **Scope rules in the prompt.** MeaningEngine declines off-topic tasks (cover letters, homework, code) and steers back to giving. It won't reveal its instructions or switch roles. It won't reproduce, list, or summarize whole guides or sections. The `off-topic`, `override`, and `extract` conversations in `npm run compare` check these.
 - **About & privacy page** at `/about`: what the tool draws on, what it isn't, and what happens to what visitors type.
 - **Embedding.** Pages on `instituteongenerosity.org` may show MeaningEngine in an iframe; other sites can't. Change this with `EMBED_ALLOWED_ORIGINS`.
 - **Safety review packet.** `npm run safety-packet` writes `docs/safety-review.md` from the live safety rules, for the licensed professional who reviews them.
