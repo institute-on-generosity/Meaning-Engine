@@ -17,6 +17,16 @@ export function citedTags(text: string): string[] {
 }
 
 /**
+ * A passage cited from the top of a guide, or the top of a section, starts with the guide's
+ * title or an all-caps heading on its own line ("OVERVIEW"). Drop those so the quote is the prose.
+ */
+export function dropLeadingHeadings(quote: string, title: string): string {
+  const lines = quote.trim().split(/\n+/);
+  while (lines.length > 1 && (lines[0].trim() === title || !/[a-z]/.test(lines[0]))) lines.shift();
+  return lines.join("\n");
+}
+
+/**
  * Numbers the passages cited in one reply. The same passage cited twice keeps its tag, and
  * `marker()` returns the inline tag text for the citations collected since the last call.
  */
@@ -26,7 +36,7 @@ export class CitationTracker {
 
   /** Record a citation; returns it if this passage is new to the reply, else null. */
   cite(title: string, quote: string): Citation | null {
-    const clean = quote.replace(/\s+/g, " ").trim();
+    const clean = dropLeadingHeadings(quote, title).replace(/\s+/g, " ").trim();
     const key = `${title}\u0000${clean}`;
     let tag = this.tags.get(key);
     let fresh: Citation | null = null;
@@ -44,5 +54,41 @@ export class CitationTracker {
     const text = ` [${this.pending.join(", ")}]`;
     this.pending = [];
     return text;
+  }
+}
+
+const TAG = /\s?\[S\d+(?:\s*,\s*S\d+)*\]/g;
+
+/** Remove [S1]-style tags, e.g. from earlier replies before they go back to the model as history. */
+export function stripTags(text: string): string {
+  return text.replace(TAG, "");
+}
+
+/**
+ * Drops [S1]-style tags the model types itself while its reply streams in chunk by chunk. Only
+ * tags added by CitationTracker (backed by a real citation) should reach the reader. Text that
+ * might be the start of a tag is held back until it's clear either way.
+ */
+export class TagFilter {
+  private held = "";
+
+  push(chunk: string): string {
+    const text = this.held + chunk;
+    const open = text.lastIndexOf("[");
+    // Hold back a trailing "[S1, S" that could still become a tag (or a space just before one).
+    if (open >= 0 && /^\[(S(\d+(\s*,\s*(S\d*)?)*)?)?$/.test(text.slice(open))) {
+      const start = open > 0 && /\s/.test(text[open - 1]) ? open - 1 : open;
+      this.held = text.slice(start);
+      return stripTags(text.slice(0, start));
+    }
+    this.held = "";
+    return stripTags(text);
+  }
+
+  /** End of a text block: release anything held back (it wasn't a tag). */
+  flush(): string {
+    const rest = stripTags(this.held);
+    this.held = "";
+    return rest;
   }
 }

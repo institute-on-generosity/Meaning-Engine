@@ -12,7 +12,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod";
-import { CitationTracker, type Citation } from "./citations";
+import { CitationTracker, TagFilter, stripTags, type Citation } from "./citations";
 import { engineConfig, type CorpusDoc } from "./config";
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -95,10 +95,13 @@ class AnthropicProvider implements ChatProvider {
   }: Parameters<ChatProvider["streamReply"]>[0]): AsyncGenerator<ReplyEvent> {
     const messages: Anthropic.Beta.BetaMessageParam[] = history.map((t, i) => {
       const last = i === history.length - 1;
+      // Earlier replies go back without their [S1] tags: models that see them in history start
+      // typing tags themselves, with no real citation behind them.
+      const content = t.role === "assistant" ? stripTags(t.content) : t.content;
       // Cache breakpoint on the latest user message: next turn reuses everything up to here.
-      const text: Anthropic.Beta.BetaTextBlockParam = { type: "text", text: t.content, ...(last ? { cache_control: CACHE } : {}) };
+      const text: Anthropic.Beta.BetaTextBlockParam = { type: "text", text: content, ...(last ? { cache_control: CACHE } : {}) };
       if (i === 0) return { role: t.role, content: [...this.documentBlocks(documents, true), text] };
-      return { role: t.role, content: last ? [text] : t.content };
+      return { role: t.role, content: last ? [text] : content };
     });
 
     const stream = this.client.beta.messages.stream({
@@ -112,11 +115,14 @@ class AnthropicProvider implements ChatProvider {
     });
 
     // Citations arrive at the start of the text block they support; the tag goes after that block.
+    // Any tag the model types itself is dropped, so every tag the reader sees has a real citation.
     const tracker = new CitationTracker();
+    const filter = new TagFilter();
     for await (const event of stream) {
       if (event.type === "content_block_delta") {
         if (event.delta.type === "text_delta") {
-          yield { type: "text", text: event.delta.text };
+          const text = filter.push(event.delta.text);
+          if (text) yield { type: "text", text };
         } else if (event.delta.type === "citations_delta" && event.delta.citation.type === "char_location") {
           const c = event.delta.citation;
           const title = c.document_title ?? documents[c.document_index]?.title ?? "IoG Giving Guide";
@@ -124,8 +130,8 @@ class AnthropicProvider implements ChatProvider {
           if (fresh) yield { type: "citation", citation: fresh };
         }
       } else if (event.type === "content_block_stop") {
-        const marker = tracker.marker();
-        if (marker) yield { type: "text", text: marker };
+        const rest = filter.flush() + tracker.marker();
+        if (rest) yield { type: "text", text: rest };
       }
     }
     const final = await stream.finalMessage();

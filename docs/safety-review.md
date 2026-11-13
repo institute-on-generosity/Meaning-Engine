@@ -1,6 +1,6 @@
 # MeaningEngine: safety review packet
 
-Generated 2026-10-28 from the current configuration. If it is regenerated with changes, the changed parts need review again.
+Generated 2026-11-13 from the current configuration. If it is regenerated with changes, the changed parts need review again.
 
 ## What MeaningEngine is
 

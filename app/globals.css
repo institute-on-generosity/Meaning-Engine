@@ -115,6 +115,8 @@ button:disabled { cursor: default; opacity: 0.45; }
 .msg.notice { color: var(--ink-soft); text-align: center; }
 .msg.error { color: var(--error); text-align: center; }
 
+/* Raise the marker by offset rather than vertical-align, so it doesn't push its line down. */
+.cite { vertical-align: baseline; position: relative; top: -0.4em; }
 .cite span {
   display: inline-block; margin-left: 2px; padding: 0 5px; border-radius: 99px;
   background: var(--lime); color: var(--black); font-size: 10.5px; font-weight: 700; cursor: help;

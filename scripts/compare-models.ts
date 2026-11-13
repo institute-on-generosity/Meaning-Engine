@@ -107,7 +107,7 @@ const PERSONAS: Persona[] = [
 // is over 100k tokens. Cache writes are 1.25x input; cache reads are the published read price.
 const PRICES: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
   "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
-  "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
+  "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 },
   "claude-haiku-5-5": { input: 0.5, output: 2.5, cacheRead: 0.05, cacheWrite: 0.625 },
 };
 

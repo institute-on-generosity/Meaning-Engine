@@ -4,14 +4,14 @@ Everything between today and a public launch, in order. Items marked **IoG** nee
 
 ## 1. Get it running
 
-- [ ] Create an Anthropic API key in IoG's Console account (starts with `sk-ant-api03-`) and add credits.
+- [x] Create an Anthropic API key in IoG's Console account (starts with `sk-ant-api03-`) and add credits.
 - [ ] Set a monthly spend limit on that workspace (**Settings → Limits**).
-- [ ] Upload the Giving Guides: `npm run corpus`, then commit and push `config/corpus.json`.
+- [x] Upload the Giving Guides: `npm run corpus`, then commit and push `config/corpus.json`.
 
 ## 2. Choose the model and tune the conversation
 
-- [ ] Run `npm run compare -- --yes` (about $4–5) and read `evals/out/<date>/report.md`.
-- [ ] **IoG:** pick the model from that report, weighing conversation quality against cost per session. Set it in `config/engine.yaml`.
+- [x] Run `npm run compare -- --yes` (about $4–5) and read `evals/out/<date>/report.md`.
+- [x] **IoG:** pick the model: Claude Haiku 5.5 (November 2026), after side-by-side tests with Opus
 - [ ] **IoG:** decide whether to include all of *Policy Advocacy* and *Philanthropic Asset Portfolio*, or only the core pages. Including all of them raises the cost of every session.
 - [ ] **IoG:** conversation design session with staff. Try the test site, then adjust `prompts/conversation.md` and the opening message.
 

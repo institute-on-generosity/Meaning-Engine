@@ -49,9 +49,9 @@ The model is set in `config/engine.yaml` (`chat_model` and `reflection_model`). 
 
 | Model | Per session | Notes |
 | --- | --- | --- |
-| `claude-opus-5-5` | ~$0.70–1.00 | Most capable |
-| `claude-sonnet-5-5` | ~$0.55–0.70 | |
-| `claude-haiku-5-5` | ~$0.15 | Fastest and cheapest |
+| `claude-haiku-5-5` | ~$0.30 | **Current choice.** Fastest and cheapest |
+| `claude-sonnet-5-5` | ~$0.80–1.00 | |
+| `claude-opus-5-5` | ~$1.60–2.00 | Most capable; cites the guides slightly more consistently |
 
 To compare them on the same test conversations:
 

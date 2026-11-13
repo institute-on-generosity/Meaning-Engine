@@ -9,7 +9,7 @@ It is explicitly **not** a therapist or a financial advisor. It's a structured r
 ## How it works
 
 1. **IoG's corpus.** IoG's documents (currently the 13 GG2026 Giving Guides) go in `corpus/iog/`. `npm run corpus` extracts each one's text and uploads it to Anthropic's file storage, then records the file ids in `config/corpus.json`. These documents are the tool's only source: the prompts forbid outside studies, statistics, and frameworks.
-2. **Each turn.** Claude gets the whole corpus plus the conversation. The documents come first and are identical for every session, so prompt caching makes repeated reads about a tenth of the normal input price. Claude replies with a question or reflection. When it draws on a guide, Anthropic's citations feature returns the exact sentence it relied on, and the chat shows that quote under the reply.
+2. **Each turn.** Claude gets the whole corpus plus the conversation. The documents come first and are identical for every session, so prompt caching makes repeated reads about a twentieth of the normal input price. Claude replies with a question or reflection. When it draws on a guide, Anthropic's citations feature returns the exact sentence it relied on, and the chat shows that quote under the reply.
 3. **Safety first.** Before any model call, each message is checked against the crisis phrases in `config/safety.yaml`. On a match, the app shows crisis resources (988, Crisis Text Line, NAMI, findahelpline.com) and doesn't call the model. The conversation prompt also tells Claude to share these resources if it notices distress the phrase list misses.
 4. **Reflection.** After a few exchanges, a "Create my reflection" button appears. Claude writes a structured reflection: a summary, values, practices to try, and questions to keep. Each practice can name the guides it draws on; the code keeps only titles that match a real document.
 
@@ -53,7 +53,7 @@ npm run safety-packet           # regenerate docs/safety-review.md
 
 ## Size limits
 
-The whole corpus is sent on every turn. That works because it's small: the 13 guides are about 130k tokens, and Claude reads up to 1M. Cost and first-reply time grow with the corpus, and `npm run corpus` warns above about 400k tokens. Well past that point, it would make sense to switch to search, giving Claude only the passages relevant to each turn. That version (OpenAI embeddings + Supabase pgvector) is in this repo's git history, in the first commit.
+The whole corpus is sent on every turn. That works because it's small: the 13 guides are about 230k tokens as sent (with citations on, as measured by `npm run corpus`), and Claude reads up to 1M. Cost and first-reply time grow with the corpus, and `npm run corpus` warns above about 400k tokens. Well past that point, it would make sense to switch to search, giving Claude only the passages relevant to each turn. That version (OpenAI embeddings + Supabase pgvector) is in this repo's git history, in the first commit.
 
 ## Changing the conversation
 
@@ -74,17 +74,19 @@ Models are set in `config/engine.yaml` under `llm:`. Provider code lives in [`li
 
 ## Cost
 
-The corpus is about 130k tokens per request. Prompt caching charges a one-time write when the cache is cold (about 1.25× the input price), then about a tenth of the input price for each turn that reuses it within 5 minutes. Rough cost of a 10-turn session plus a reflection:
+Each turn sends about 254k tokens, nearly all of it the corpus. Prompt caching charges a one-time write when the cache is cold (1.25× the input price), then a twentieth of the input price for each turn that reuses it within 5 minutes. The reflection doesn't resend the corpus, only the passages the conversation cited, so it costs about $0.03. Rough cost of a 10-turn session plus a reflection:
 
 | Model (`chat_model`) | Per session |
 | --- | --- |
-| `claude-opus-5-5` (default) | ~$0.70–1.00 |
-| `claude-sonnet-5-5` | ~$0.55–0.70 |
-| `claude-haiku-5-5` | ~$0.15 |
+| `claude-haiku-5-5` (default) | ~$0.30 |
+| `claude-sonnet-5-5` | ~$0.80–1.00 |
+| `claude-opus-5-5` | ~$1.60–2.00 |
+
+Most of that is the first turn's cache write (about $1.10 on Opus). A pause of more than 5 minutes between replies writes the cache again, hence the upper end of each range. A measured 4-turn session plus a reflection on Opus (November 2026) came to about $1.30.
 
 The proposal targets $0.01–0.05 per session. The biggest levers:
 
-- **A smaller model.** Compare conversation quality on a few test sessions.
+- **The model.** Haiku is the default since November 2026. In 7 side-by-side test conversations it matched Opus on safety and tone; it cited the guides slightly less consistently (2 of 24 replies credited IoG without a formal citation, against 0 for Opus), at about a fifth of the cost: $0.07 against $0.36 per test conversation once the cache was warm.
 - **A smaller corpus.** *Policy Advocacy* alone is about a fifth of the corpus, and IoG marks only parts of it and of *Philanthropic Asset Portfolio* as core reading.
 
 The server log prints input, cache-read, cache-write, and output tokens for every turn.
