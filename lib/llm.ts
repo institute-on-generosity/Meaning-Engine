@@ -12,7 +12,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod";
-import { CitationTracker, OpeningFilter, TagFilter, stripTags, type Citation } from "./citations";
+import { CitationTracker, OpeningFilter, PhraseRewriter, TagFilter, stripTags, type Citation } from "./citations";
 import { engineConfig, type CorpusDoc } from "./config";
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -124,13 +124,15 @@ class AnthropicProvider implements ChatProvider {
     const tracker = new CitationTracker();
     const filter = new TagFilter();
     const opening = new OpeningFilter();
+    // Known-wrong wording ("You can read the full guide at…") is rewritten to what's true.
+    const rewriter = new PhraseRewriter();
     let inText = false;
     for await (const event of stream) {
       if (event.type === "content_block_start") {
         inText = event.content_block.type === "text";
       } else if (event.type === "content_block_delta") {
         if (event.delta.type === "text_delta") {
-          const text = opening.push(filter.push(event.delta.text));
+          const text = rewriter.push(opening.push(filter.push(event.delta.text)));
           if (text) yield { type: "text", text };
         } else if (event.delta.type === "citations_delta" && event.delta.citation.type === "char_location") {
           const c = event.delta.citation;
@@ -140,7 +142,7 @@ class AnthropicProvider implements ChatProvider {
         }
       } else if (event.type === "content_block_stop" && inText) {
         // Thinking and other non-text blocks end here too; only text blocks release held text.
-        const rest = opening.push(filter.flush()) + opening.flush() + tracker.marker();
+        const rest = rewriter.push(opening.push(filter.flush()) + opening.flush()) + rewriter.flush() + tracker.marker();
         if (rest) yield { type: "text", text: rest };
         inText = false;
       }

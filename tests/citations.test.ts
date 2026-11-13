@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CitationTracker, OpeningFilter, TagFilter, citedTags, dropFillerOpening, dropLeadingHeadings, stripTags } from "@/lib/citations";
+import { CitationTracker, OpeningFilter, PhraseRewriter, TagFilter, citedTags, dropFillerOpening, dropLeadingHeadings, rewritePhrases, stripTags } from "@/lib/citations";
 
 describe("CitationTracker", () => {
   it("numbers new passages and reuses the tag for a repeat", () => {
@@ -116,5 +116,65 @@ describe("OpeningFilter", () => {
 
   it("releases a short reply that never finishes a sentence", () => {
     expect(run(["I'm sorry"])).toBe("I'm sorry");
+  });
+});
+
+describe("rewritePhrases", () => {
+  const url = "https://www.instituteongenerosity.org/learning-resources/";
+  it("rewrites claims that the guide can be read at the resources page", () => {
+    expect(rewritePhrases(`You can read the full guide at ${url}.`)).toBe(`IoG shares its learning resources at ${url}.`);
+    expect(rewritePhrases(`you can find the complete guide online at ${url}`)).toBe(`IoG shares its learning resources at ${url}.`);
+    expect(rewritePhrases("I can't paste it, but I can point you to where to read it.")).toBe(
+      "I can't paste it, but I can point you to IoG's learning resources.",
+    );
+    expect(rewritePhrases("I'm glad to point you toward where to read it.")).toBe("I'm glad to point you to IoG's learning resources.");
+    expect(rewritePhrases("I can show you where to find the guide.")).toBe("I can show you IoG's learning resources.");
+    expect(rewritePhrases("I'm glad to point you to where it lives and help with the rest.")).toBe(
+      "I'm glad to point you to IoG's learning resources and help with the rest.",
+    );
+  });
+
+  it("turns any sentence carrying the resources link into the accurate one", () => {
+    expect(rewritePhrases(`It's IoG's to share. The learning resources page at ${url} is the place to read it in full.\n\nWhat I can do is help.`)).toBe(
+      `It's IoG's to share. IoG shares its learning resources at ${url}.\n\nWhat I can do is help.`,
+    );
+    expect(rewritePhrases(`Happy to help. For the full text, IoG shares its learning resources at ${url}. What's on your mind?`)).toBe(
+      `Happy to help. IoG shares its learning resources at ${url}. What's on your mind?`,
+    );
+  });
+
+  it("leaves accurate sentences alone", () => {
+    const ok = `IoG shares its learning resources at ${url}. You can read more about your own values here.`;
+    expect(rewritePhrases(ok)).toBe(ok);
+  });
+});
+
+describe("PhraseRewriter", () => {
+  const url = "https://www.instituteongenerosity.org/learning-resources/";
+  const run = (chunks: string[]) => {
+    const r = new PhraseRewriter();
+    return chunks.map((c) => r.push(c)).join("") + r.flush();
+  };
+
+  it("catches a phrase split across chunks inside a long reply", () => {
+    const before = "I won't go through the guide section by section, since that would reproduce it. ".repeat(3);
+    const out = run([before, "You can read the ", "full guide at ", url.slice(0, 30), url.slice(30), ". What's the policy question on your mind?"]);
+    expect(out).toBe(`${before}IoG shares its learning resources at ${url}. What's the policy question on your mind?`);
+  });
+
+  it("streams the accurate sentence through intact, even one character at a time", () => {
+    const reply = `I won't go through it section by section. IoG shares its learning resources at ${url}.\n\nWhat's on your mind?`;
+    expect(run([...reply])).toBe(reply);
+    expect(run([reply.slice(0, 50), reply.slice(50, 97), reply.slice(97)])).toBe(reply);
+  });
+
+  it("keeps the space between a sentence and a rewritten one", () => {
+    const reply = `I can point you to IoG's learning resources. You can find it at ${url}. What's on your mind?`;
+    expect(run([...reply])).toBe(`I can point you to IoG's learning resources. IoG shares its learning resources at ${url}. What's on your mind?`);
+  });
+
+  it("passes ordinary text through unchanged", () => {
+    const parts = ["Five programs in one city ", "is a manageable set to compare. ", "Which would you visit first?"];
+    expect(run(parts)).toBe(parts.join(""));
   });
 });

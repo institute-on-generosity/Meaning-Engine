@@ -141,3 +141,68 @@ export class OpeningFilter {
     return out;
   }
 }
+
+/**
+ * Wording the model uses despite instructions, rewritten to what's true. IoG's Giving Guides
+ * aren't posted on its learning-resources page (as of November 2026), so a reply must not say
+ * the guide can be read there.
+ */
+const RESOURCES_URL = "https://www.instituteongenerosity.org/learning-resources/";
+const RESOURCES_SENTENCE = `IoG shares its learning resources at ${RESOURCES_URL}.`;
+
+type Replacement = string | ((match: string, ...groups: string[]) => string);
+
+const REWRITES: [RegExp, Replacement][] = [
+  // Any sentence that carries the resources link becomes the one accurate sentence, however the
+  // model worded it ("…is the place to read it in full", "For the full text, …"). A sentence runs
+  // to a . ! or ? followed by a space or the end; the dots inside the URL don't end it.
+  [
+    /(^|[.!?]\s+|\n)(?:[^.!?\n]|[.!?](?!\s))*?https:\/\/www\.instituteongenerosity\.org\/learning-resources\/?(?:[^.!?\n]|[.!?](?!\s|$))*[.!?]?/g,
+    `$1${RESOURCES_SENTENCE}`,
+  ],
+  [
+    /\b(?:you can|you could|you'll be able to|you're welcome to) (?:read|find|access|get|see) (?:the |that |this )?(?:full |complete |whole |entire )?(?:guide|text|document)(?: itself| in full)?(?: there| online)?,? (?:at|on|through|via) /gi,
+    "IoG shares its learning resources at ",
+  ],
+  [
+    /\b(point|direct|send|show) you (?:to |toward |towards )?where (?:(?:to|you can) (?:read|find) (?:it|the guide|the full guide)|(?:it|the guide) (?:lives|is|sits))/gi,
+    (_m, verb: string) => (verb.toLowerCase() === "show" ? `${verb} you IoG's learning resources` : `${verb} you to IoG's learning resources`),
+  ],
+  [/\bwhere you can (?:read|find) (?:the |that )?(?:full |complete )?(?:guide|text)\b/gi, "where IoG shares its materials"],
+];
+
+/** Applies REWRITES to finished text. */
+export function rewritePhrases(text: string): string {
+  return REWRITES.reduce(
+    (t, [pattern, replacement]) =>
+      typeof replacement === "string" ? t.replace(pattern, replacement) : t.replace(pattern, replacement as (m: string, ...g: string[]) => string),
+    text,
+  );
+}
+
+/**
+ * Applies REWRITES while a reply streams, one finished sentence at a time: text is released only
+ * up to the last sentence end (". ", "? ", "! " or a line break; the dots inside a URL don't
+ * count), so every rewrite sees whole sentences that start where a sentence really starts.
+ */
+export class PhraseRewriter {
+  private static MAX_HOLD = 1500; // a runaway "sentence" is released anyway
+  private held = "";
+
+  push(chunk: string): string {
+    this.held += chunk;
+    let end = -1;
+    for (const m of this.held.matchAll(/[.!?]["')\]]*\s+|\n+/g)) end = m.index + m[0].length;
+    if (end < 0 && this.held.length > PhraseRewriter.MAX_HOLD) end = this.held.length;
+    if (end < 0) return "";
+    const done = this.held.slice(0, end);
+    this.held = this.held.slice(end);
+    return rewritePhrases(done);
+  }
+
+  flush(): string {
+    const rest = rewritePhrases(this.held);
+    this.held = "";
+    return rest;
+  }
+}
