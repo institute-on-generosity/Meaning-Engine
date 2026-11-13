@@ -12,7 +12,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod";
-import { CitationTracker, TagFilter, stripTags, type Citation } from "./citations";
+import { CitationTracker, OpeningFilter, TagFilter, stripTags, type Citation } from "./citations";
 import { engineConfig, type CorpusDoc } from "./config";
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -120,12 +120,17 @@ class AnthropicProvider implements ChatProvider {
 
     // Citations arrive at the start of the text block they support; the tag goes after that block.
     // Any tag the model types itself is dropped, so every tag the reader sees has a real citation.
+    // A filler opening sentence ("That's a useful thing to name.") is dropped from the first text.
     const tracker = new CitationTracker();
     const filter = new TagFilter();
+    const opening = new OpeningFilter();
+    let inText = false;
     for await (const event of stream) {
-      if (event.type === "content_block_delta") {
+      if (event.type === "content_block_start") {
+        inText = event.content_block.type === "text";
+      } else if (event.type === "content_block_delta") {
         if (event.delta.type === "text_delta") {
-          const text = filter.push(event.delta.text);
+          const text = opening.push(filter.push(event.delta.text));
           if (text) yield { type: "text", text };
         } else if (event.delta.type === "citations_delta" && event.delta.citation.type === "char_location") {
           const c = event.delta.citation;
@@ -133,9 +138,11 @@ class AnthropicProvider implements ChatProvider {
           const fresh = tracker.cite(title, c.cited_text);
           if (fresh) yield { type: "citation", citation: fresh };
         }
-      } else if (event.type === "content_block_stop") {
-        const rest = filter.flush() + tracker.marker();
+      } else if (event.type === "content_block_stop" && inText) {
+        // Thinking and other non-text blocks end here too; only text blocks release held text.
+        const rest = opening.push(filter.flush()) + opening.flush() + tracker.marker();
         if (rest) yield { type: "text", text: rest };
+        inText = false;
       }
     }
     const final = await stream.finalMessage();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CitationTracker, TagFilter, citedTags, dropLeadingHeadings, stripTags } from "@/lib/citations";
+import { CitationTracker, OpeningFilter, TagFilter, citedTags, dropFillerOpening, dropLeadingHeadings, stripTags } from "@/lib/citations";
 
 describe("CitationTracker", () => {
   it("numbers new passages and reuses the tag for a repeat", () => {
@@ -75,5 +75,46 @@ describe("TagFilter", () => {
     expect(run(["A note [see below] and [", "1] too."])).toBe("A note [see below] and [1] too.");
     expect(run(["Plain ", "text."])).toBe("Plain text.");
     expect(run(["ends with [S"])).toBe("ends with [S");
+  });
+});
+
+describe("dropFillerOpening", () => {
+  it("drops a short opening sentence that only grades the message", () => {
+    expect(dropFillerOpening("That's a useful thing to name. Knowing what you want comes first.")).toBe("Knowing what you want comes first.");
+    expect(dropFillerOpening("That's a fair thing to want. A yearly fight wears on both of you.")).toBe("A yearly fight wears on both of you.");
+    expect(dropFillerOpening("Thanks for saying that plainly. Routine giving can drift.")).toBe("Routine giving can drift.");
+    expect(dropFillerOpening("That's an honest thing to notice. Relief isn't the same as meaning.")).toBe("Relief isn't the same as meaning.");
+  });
+
+  it("keeps openings that carry content", () => {
+    const keep = [
+      "That sounds exhausting: the news keeps producing urgent needs. What would help?",
+      "That's a significant decision, and the gap may be on your mind. What comes up?",
+      "Your dad's work as a rural doctor shaped what your family cared about. What stands out?",
+      "That's a useful thing to name.",
+    ];
+    for (const k of keep) expect(dropFillerOpening(k)).toBe(k);
+  });
+});
+
+describe("OpeningFilter", () => {
+  const run = (chunks: string[]) => {
+    const f = new OpeningFilter();
+    return chunks.map((c) => f.push(c)).join("") + f.flush();
+  };
+
+  it("drops filler split across chunks and passes the rest through", () => {
+    expect(run(["That's a ", "useful thing", " to name. Knowing", " what you want comes first."])).toBe(
+      "Knowing what you want comes first.",
+    );
+  });
+
+  it("leaves a reply that opens with substance untouched", () => {
+    const parts = ["Five programs ", "in one city is a manageable set. ", "Which would you visit first?"];
+    expect(run(parts)).toBe(parts.join(""));
+  });
+
+  it("releases a short reply that never finishes a sentence", () => {
+    expect(run(["I'm sorry"])).toBe("I'm sorry");
   });
 });

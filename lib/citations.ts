@@ -97,3 +97,47 @@ export class TagFilter {
     return rest;
   }
 }
+
+/**
+ * A short opening sentence that only grades the person's message ("That's a useful thing to
+ * name.", "That's a fair thing to want.", "Thanks for saying that plainly."). Models write these
+ * despite instructions; they add nothing, so the first one in a reply is dropped.
+ */
+const FILLER_OPENING =
+  /^\s*(?:(?:that|this|it)(?:'s| is| was) (?:a |an )?(?:really |very |such a |completely |totally )?(?:useful|fair|good|great|honest|important|common|natural|understandable|real|helpful|thoughtful|interesting|reasonable|valid|powerful|brave)(?: (?:thing|question|point|place|instinct|observation|insight|shift|reaction|feeling|way to (?:put|see) it))?(?: to (?:name|want|ask|notice|say|feel|wonder|land|be|have|hear))?(?: about)?|thanks? (?:you )?for (?:saying|sharing|naming|telling me) (?:that|this)(?: (?:so )?(?:plainly|honestly|openly|directly))?|what a (?:good|great|thoughtful|beautiful) question)[.!]\s+/i;
+
+/** Drops one filler opening sentence (see FILLER_OPENING) from the start of a reply. */
+export function dropFillerOpening(text: string): string {
+  return text.replace(FILLER_OPENING, "");
+}
+
+/**
+ * Applies dropFillerOpening to a reply while it streams: holds back the start of the reply
+ * until its first sentence is complete (or clearly long), then releases everything after it.
+ */
+export class OpeningFilter {
+  private held = "";
+  private done = false;
+
+  push(chunk: string): string {
+    if (this.done) return chunk;
+    this.held += chunk;
+    // Decide once the first sentence has ended and something follows it, or once the opening
+    // is too long to be filler.
+    const ended = /[.!]\s+\S/.test(this.held);
+    if (!ended && this.held.length < 120) return "";
+    this.done = true;
+    const out = dropFillerOpening(this.held);
+    this.held = "";
+    return out;
+  }
+
+  /** End of the reply's first text block: release whatever is held. */
+  flush(): string {
+    if (this.done) return "";
+    this.done = true;
+    const out = this.held;
+    this.held = "";
+    return out;
+  }
+}
