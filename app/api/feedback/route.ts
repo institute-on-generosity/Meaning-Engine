@@ -1,6 +1,6 @@
 import { z, ZodError } from "zod";
 import { advisorFor } from "@/lib/advisors";
-import { recordEvent, modeOf } from "@/lib/events";
+import { modeOf, recordEvent, secondsOf } from "@/lib/events";
 import { guard } from "@/lib/guard";
 
 export const runtime = "nodejs";
@@ -25,6 +25,6 @@ export async function POST(req: Request) {
     return Response.json({ error: `Bad request: ${detail}` }, { status: 400 });
   }
   const advisor = advisorFor((body as { advisor?: unknown } | null)?.advisor).id;
-  await recordEvent({ type: "survey", mode: modeOf(body), advisor, ...data });
+  await recordEvent({ type: "survey", mode: modeOf(body), advisor, seconds: secondsOf(body), ...data });
   return new Response(null, { status: 204 });
 }

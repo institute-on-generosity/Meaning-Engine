@@ -72,33 +72,32 @@ The report shows each model's replies, citations, reflections, and cost side by 
 
 ## See how it's doing
 
-GuideGPT records three anonymous events, never including conversation text:
+GuideGPT records three anonymous events, never including conversation text. Each one notes which advisor was used and whether it came from the website or the kiosk:
 
 - **`session_started`:** someone sent their first message.
-- **`reflection_created`:** someone completed a session. This counts toward the 200-session goal.
+- **`reflection_created`:** someone completed a session by creating their reflection or plan. This counts toward the 200-session goal, and records how many messages and minutes the session took.
 - **`survey`:** their answer to "How would you describe this conversation?" (insightful, useful, neutral, or not useful), plus an optional comment.
 
-The "insightful or useful" rate is (insightful + useful) ÷ all survey answers; the goal is over 75%.
+### The usage dashboard
 
-By default, events only appear in the hosting service's logs. To collect them in a Google Sheet:
+[`docs/usage-dashboard.gs`](usage-dashboard.gs) collects the events in a Google Sheet and builds a **Dashboard** tab that updates itself as events arrive:
+
+- sessions started and completed, against the goal of 200 completed sessions;
+- the completion rate;
+- the share of survey answers that are "insightful" or "useful", against the goal of over 75%;
+- average minutes per completed session, against the goal of more than five;
+- sessions started and completed for each advisor;
+- a chart of sessions per day, and the 25 most recent survey comments.
+
+To set it up (about 10 minutes, once):
 
 1. Create a Google Sheet, then open **Extensions → Apps Script**.
-2. Replace the code with the snippet below and save.
-3. Click **Deploy → New deployment**, choose type **Web app**, set "Execute as" to **Me** and "Who has access" to **Anyone**, then deploy and copy the web app URL.
-4. In the hosting settings, add the environment variable `FEEDBACK_WEBHOOK_URL` set to that URL, and redeploy.
+2. Replace the code with the contents of `docs/usage-dashboard.gs` and save.
+3. In the function menu, choose **setupDashboard** and click **Run**. Approve the permissions it asks for. This creates the Events and Dashboard tabs.
+4. Click **Deploy → New deployment**, choose type **Web app**, set "Execute as" to **Me** and "Who has access" to **Anyone**, then deploy and copy the web app URL.
+5. In Vercel (project → **Settings → Environment Variables**), add `FEEDBACK_WEBHOOK_URL` set to that URL, and redeploy.
 
-```javascript
-function doPost(e) {
-  const book = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = book.getSheetByName("Events") || book.insertSheet("Events");
-  if (sheet.getLastRow() === 0) sheet.appendRow(["at", "type", "mode", "turns", "rating", "comment", "model"]);
-  const d = JSON.parse(e.postData.contents);
-  sheet.appendRow([d.at, d.type, d.mode, d.turns ?? "", d.rating ?? "", d.comment ?? "", d.model ?? ""]);
-  return ContentService.createTextOutput("ok");
-}
-```
-
-Keep the web app URL private: anyone who has it can add rows to the Sheet.
+Keep the web app URL private: anyone who has it can add rows to the Sheet. Run **setupDashboard** again any time to rebuild the Dashboard tab; it never touches the Events data. Until the webhook is set up, events only appear in Vercel's logs.
 
 ## Run it at a convening (kiosk mode)
 

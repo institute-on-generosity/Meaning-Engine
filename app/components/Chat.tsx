@@ -37,6 +37,9 @@ export default function Chat({ advisors, initialAdvisor, reflectionAfter, maxCha
   const [countdown, setCountdown] = useState<number | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const lastActivity = useRef(Date.now());
+  // When this conversation began (the first message), for the anonymous session-length metric.
+  const sessionStart = useRef<number | null>(null);
+  const elapsedSeconds = () => (sessionStart.current ? Math.round((Date.now() - sessionStart.current) / 1000) : 0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -105,6 +108,7 @@ export default function Chat({ advisors, initialAdvisor, reflectionAfter, maxCha
   async function send() {
     const text = draft.trim();
     if (!text || busy) return;
+    if (sessionStart.current === null) sessionStart.current = Date.now();
     const next: Message[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setDraft("");
@@ -168,7 +172,13 @@ export default function Chat({ advisors, initialAdvisor, reflectionAfter, maxCha
       const res = await fetch("/api/reflection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: transcript(messages), cited: citedPassages(messages), mode, advisor: advisor.id }),
+        body: JSON.stringify({
+          messages: transcript(messages),
+          cited: citedPassages(messages),
+          mode,
+          advisor: advisor.id,
+          seconds: elapsedSeconds(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong. Please try again.");
@@ -181,6 +191,7 @@ export default function Chat({ advisors, initialAdvisor, reflectionAfter, maxCha
   }
 
   function clearConversation() {
+    sessionStart.current = null;
     setMessages([]);
     setReflection(null);
     setReflectionError(null);
@@ -258,7 +269,7 @@ export default function Chat({ advisors, initialAdvisor, reflectionAfter, maxCha
         {reflection && (
           <>
             <ReflectionCard reflection={reflection} kiosk={!!kiosk} onFinish={clearAll} advisor={advisor} />
-            <SurveyCard turns={userTurns} mode={mode} advisor={advisor.id} />
+            <SurveyCard turns={userTurns} mode={mode} advisor={advisor.id} seconds={elapsedSeconds} />
           </>
         )}
         <div ref={endRef} />
@@ -639,7 +650,17 @@ const RATINGS = [
 ] as const;
 
 /** One-question post-session survey (the proposal's "insightful or useful" metric). Anonymous. */
-function SurveyCard({ turns, mode, advisor }: { turns: number; mode: "web" | "kiosk"; advisor: string }) {
+function SurveyCard({
+  turns,
+  mode,
+  advisor,
+  seconds,
+}: {
+  turns: number;
+  mode: "web" | "kiosk";
+  advisor: string;
+  seconds: () => number;
+}) {
   const [rating, setRating] = useState<(typeof RATINGS)[number][0] | null>(null);
   const [comment, setComment] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -651,7 +672,7 @@ function SurveyCard({ turns, mode, advisor }: { turns: number; mode: "web" | "ki
       const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, comment, turns, mode, advisor }),
+        body: JSON.stringify({ rating, comment, turns, mode, advisor, seconds: seconds() }),
       });
       setStatus(res.ok ? "sent" : "error");
     } catch {

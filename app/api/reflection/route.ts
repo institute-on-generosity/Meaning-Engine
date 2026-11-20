@@ -3,7 +3,7 @@ import { engineConfig } from "@/lib/config";
 import { ModelDeclinedError } from "@/lib/llm";
 import { advisorFor } from "@/lib/advisors";
 import { CitedPassages, createReflection, type CitedPassage } from "@/lib/reflection";
-import { modeOf, recordEvent } from "@/lib/events";
+import { modeOf, recordEvent, secondsOf } from "@/lib/events";
 import { guard } from "@/lib/guard";
 import { parseTranscript, userTurns } from "@/lib/session";
 
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
       type: "reflection_created",
       mode: modeOf(body),
       turns: userTurns(messages),
+      seconds: secondsOf(body),
       model: engineConfig().llm.reflection_model,
     });
     return Response.json(reflection);

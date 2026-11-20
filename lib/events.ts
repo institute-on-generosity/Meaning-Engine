@@ -9,8 +9,16 @@ export type Mode = "web" | "kiosk";
 
 export type UsageEvent =
   | { type: "session_started"; mode: Mode; advisor: string }
-  | { type: "reflection_created"; mode: Mode; advisor: string; turns: number; model: string }
-  | { type: "survey"; mode: Mode; advisor: string; rating: "insightful" | "useful" | "neutral" | "not_useful"; comment: string; turns: number };
+  | { type: "reflection_created"; mode: Mode; advisor: string; turns: number; seconds: number; model: string }
+  | {
+      type: "survey";
+      mode: Mode;
+      advisor: string;
+      rating: "insightful" | "useful" | "neutral" | "not_useful";
+      comment: string;
+      turns: number;
+      seconds: number;
+    };
 
 export async function recordEvent(event: UsageEvent): Promise<void> {
   const row = { ...event, at: new Date().toISOString() };
@@ -29,6 +37,12 @@ export async function recordEvent(event: UsageEvent): Promise<void> {
     // Recording a metric must never break the visitor's session.
     console.error("[event] webhook failed:", err instanceof Error ? err.message : err);
   }
+}
+
+/** Session length in seconds reported by the browser, clamped to a sane range (0 if missing). */
+export function secondsOf(body: unknown): number {
+  const n = Number((body as { seconds?: unknown } | null)?.seconds);
+  return Number.isFinite(n) ? Math.min(Math.max(Math.round(n), 0), 86_400) : 0;
 }
 
 export function modeOf(body: unknown): Mode {
