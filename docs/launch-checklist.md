@@ -1,4 +1,4 @@
-# MeaningEngine launch checklist
+# WaytoMatter launch checklist
 
 Everything between today and a public launch, in order. Items marked **IoG** need a decision or sign-off from IoG; the rest are setup.
 
@@ -36,7 +36,7 @@ The About & privacy page (`app/about/page.tsx`, at `/about`) describes what happ
 - [ ] **IoG:** choose hosting (Vercel Pro, or IoG's usual host) and a web address, such as `meaning.instituteongenerosity.org`.
 - [ ] Set `ANTHROPIC_API_KEY` in the host's environment settings.
 - [ ] Optional: survey results to a Google Sheet (`FEEDBACK_WEBHOOK_URL`); see the staff guide.
-- [ ] Optional: to embed MeaningEngine on pages outside `instituteongenerosity.org`, set `EMBED_ALLOWED_ORIGINS`. By default, only IoG's own domains may embed it.
+- [ ] Optional: to embed WaytoMatter on pages outside `instituteongenerosity.org`, set `EMBED_ALLOWED_ORIGINS`. By default, only IoG's own domains may embed it.
 - [ ] Deploy, then run the smoke test below on the live site.
 
 ## 6. Smoke test on the live site

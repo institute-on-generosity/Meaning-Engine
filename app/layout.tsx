@@ -6,7 +6,7 @@ import "./globals.css";
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "MeaningEngine · Institute on Generosity",
+  title: "WaytoMatter · Institute on Generosity",
   description: "A guided reflection on what makes your giving meaningful, grounded in IoG's research.",
 };
 

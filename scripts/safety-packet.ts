@@ -1,5 +1,5 @@
 /**
- * Build the packet for the licensed mental-health professional who reviews MeaningEngine's safety
+ * Build the packet for the licensed mental-health professional who reviews WaytoMatter's safety
  * design before launch. It quotes the current rules straight from config/safety.yaml and
  * prompts/conversation.md, so what the reviewer approves is exactly what runs.
  *
@@ -49,13 +49,13 @@ function main() {
   const lines: string[] = [];
 
   lines.push(
-    "# MeaningEngine: safety review packet",
+    "# WaytoMatter: safety review packet",
     "",
     `Generated ${new Date().toISOString().slice(0, 10)} from the current configuration. If it is regenerated with changes, the changed parts need review again.`,
     "",
-    "## What MeaningEngine is",
+    "## What WaytoMatter is",
     "",
-    "MeaningEngine is a public website from the Institute on Generosity (IoG). A visitor has a typed conversation with an AI (Claude, by Anthropic) about their charitable giving: why they give, what they care about, and what they're unsure about. The AI asks questions and shares ideas drawn only from IoG's published Giving Guides. A session lasts about 10–15 minutes and can end with a written \"giving reflection\". It will also run on shared screens at IoG events.",
+    "WaytoMatter is a public website from the Institute on Generosity (IoG). A visitor has a typed conversation with an AI (Claude, by Anthropic) about their charitable giving: why they give, what they care about, and what they're unsure about. The AI asks questions and shares ideas drawn only from IoG's published Giving Guides. A session lasts about 10–15 minutes and can end with a written \"giving reflection\". It will also run on shared screens at IoG events.",
     "",
     "It is designed as a reflection companion, explicitly **not** therapy, counseling, or financial advice. Visitors are anonymous. IoG does not store conversations.",
     "",

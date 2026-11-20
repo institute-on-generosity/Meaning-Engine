@@ -1,6 +1,6 @@
-# MeaningEngine
+# WaytoMatter
 
-A conversational reflection tool from the Institute on Generosity (IoG). A person talks about their giving: why they give, what they care about, and what they're unsure about. MeaningEngine responds with questions and insights drawn only from the materials IoG has shared, quoting its sources. At the end, it writes a personal giving reflection the person can download, copy, or print.
+A conversational reflection tool from the Institute on Generosity (IoG). A person talks about their giving: why they give, what they care about, and what they're unsure about. WaytoMatter responds with questions and insights drawn only from the materials IoG has shared, quoting its sources. At the end, it writes a personal giving reflection the person can download, copy, or print.
 
 It is explicitly **not** a therapist or a financial advisor. It's a structured reflection companion.
 
@@ -21,9 +21,9 @@ Also included:
 - **Anonymous usage events** (session started, reflection created, survey answer), printed to the server log. If `FEEDBACK_WEBHOOK_URL` is set, they're also posted there, for example to a Google Sheet. Conversation text is never included.
 - **Kiosk mode** at `/kiosk` for convenings. It clears itself after inactivity, and visitors can print but not download.
 - **Abuse limits.** The API only accepts requests from the site itself, with per-network rate limits set in `config/engine.yaml`. Each reply is capped at 2,500 output tokens and each reflection at 4,000 (`max_reply_tokens`, `max_reflection_tokens`), which bounds the cost of any single call.
-- **Scope rules in the prompt.** MeaningEngine declines off-topic tasks (cover letters, homework, code) and steers back to giving. It won't reveal its instructions or switch roles. It won't reproduce, list, or summarize whole guides or sections. The `off-topic`, `override`, and `extract` conversations in `npm run compare` check these.
+- **Scope rules in the prompt.** WaytoMatter declines off-topic tasks (cover letters, homework, code) and steers back to giving. It won't reveal its instructions or switch roles. It won't reproduce, list, or summarize whole guides or sections. The `off-topic`, `override`, and `extract` conversations in `npm run compare` check these.
 - **About & privacy page** at `/about`: what the tool draws on, what it isn't, and what happens to what visitors type.
-- **Embedding.** Pages on `instituteongenerosity.org` may show MeaningEngine in an iframe; other sites can't. Change this with `EMBED_ALLOWED_ORIGINS`.
+- **Embedding.** Pages on `instituteongenerosity.org` may show WaytoMatter in an iframe; other sites can't. Change this with `EMBED_ALLOWED_ORIGINS`.
 - **Safety review packet.** `npm run safety-packet` writes `docs/safety-review.md` from the live safety rules, for the licensed professional who reviews them.
 
 ## Running it locally
@@ -62,7 +62,7 @@ Most changes need no code:
 
 | To change… | Edit |
 | --- | --- |
-| How MeaningEngine talks, the session arc, scope limits | `prompts/conversation.md` |
+| How WaytoMatter talks, the session arc, scope limits | `prompts/conversation.md` |
 | What goes into the end-of-session reflection | `prompts/reflection.md` (fields are in `lib/reflection.ts`) |
 | Opening message, session length, when the reflection button appears | `config/engine.yaml` |
 | Model and effort | `config/engine.yaml` |

@@ -223,7 +223,7 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
       <div className="shell">
       <main className="thread" role="log" aria-live="polite" aria-labelledby="thread-title">
         <h1 id="thread-title" className="visually-hidden">
-          Conversation with MeaningEngine
+          Conversation with WaytoMatter
         </h1>
         <AssistantBubble content={opening} sources={[]} />
         {messages.map((m, i) =>
@@ -241,7 +241,7 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
           ),
         )}
         {busy && messages[messages.length - 1]?.role === "user" && (
-          <div className="msg assistant typing" role="status" aria-label="MeaningEngine is thinking">
+          <div className="msg assistant typing" role="status" aria-label="WaytoMatter is thinking">
             <span />
             <span />
             <span />
@@ -317,8 +317,8 @@ function Header({ onRestart, restartLabel = "Start over" }: { onRestart?: () => 
     <header className="topbar">
       <div className="topbar-inner">
         <div className="brand">
-          <span className="org">Institute on Generosity</span>
-          <span className="product">MeaningEngine · a reflection on your giving</span>
+          <img className="org" src="/iog-logo-white.svg" alt="Institute on Generosity" width={106} height={30} />
+          <span className="product">WaytoMatter · a reflection on your giving</span>
         </div>
         {onRestart && (
           <button className="ghost" onClick={onRestart}>
@@ -352,7 +352,7 @@ function Intro({ onBegin, kiosk }: { onBegin: () => void; kiosk: boolean }) {
               what you&rsquo;re unsure about. It draws on the Institute on Generosity&rsquo;s research and Giving Guides.
             </p>
             <p className="aside">
-              MeaningEngine asks questions; it doesn&rsquo;t hand you answers. It won&rsquo;t tell you where or how much to
+              WaytoMatter asks questions; it doesn&rsquo;t hand you answers. It won&rsquo;t tell you where or how much to
               give. You decide.
             </p>
           </div>
@@ -395,10 +395,10 @@ function Intro({ onBegin, kiosk }: { onBegin: () => void; kiosk: boolean }) {
                 findahelpline.com.
               </li>
               <li>
-                <Link href={kiosk ? "/about?from=kiosk" : "/about"}>About MeaningEngine &amp; your privacy</Link>
+                <Link href={kiosk ? "/about?from=kiosk" : "/about"}>About WaytoMatter &amp; your privacy</Link>
               </li>
             </ul>
-            <button className="btn-lime" onClick={onBegin}>
+            <button className="btn-accent" onClick={onBegin}>
               Begin →
             </button>
           </div>
@@ -423,7 +423,7 @@ function AssistantBubble({ content, sources, streaming }: { content: string; sou
   const cited = streaming ? [] : citedTags(content).flatMap((t) => sources.find((s) => s.tag === t) ?? []);
   return (
     <div className="msg assistant">
-      <span className="visually-hidden">MeaningEngine: </span>
+      <span className="visually-hidden">WaytoMatter: </span>
       <RichText text={content} sources={sources} />
       {cited.length > 0 && (
         <ol className="sources" aria-label="Sources">
@@ -519,7 +519,7 @@ function reflectionAsMarkdown(r: Reflection): string {
     for (const g of p.guides) lines.push(`  - From IoG's ${g}`);
   }
   lines.push("", "## Questions to keep", "", ...r.questions_to_keep.map((q) => `- ${q}`), "");
-  lines.push(`_Created with MeaningEngine, Institute on Generosity, ${new Date(r.createdAt).toLocaleDateString()}._`);
+  lines.push(`_Created with WaytoMatter, Institute on Generosity, ${new Date(r.createdAt).toLocaleDateString()}._`);
   return lines.join("\n");
 }
 
@@ -629,7 +629,7 @@ function SurveyCard({ turns, mode }: { turns: number; mode: "web" | "kiosk" }) {
   if (status === "sent") {
     return (
       <section className="survey" aria-live="polite">
-        <p className="survey-thanks">Thank you. Your answer helps IoG improve MeaningEngine.</p>
+        <p className="survey-thanks">Thank you. Your answer helps IoG improve WaytoMatter.</p>
       </section>
     );
   }

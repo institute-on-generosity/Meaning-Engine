@@ -1,4 +1,4 @@
-# MeaningEngine settings. Changes take effect on the next deploy (or dev-server restart).
+# WaytoMatter settings. Changes take effect on the next deploy (or dev-server restart).
 # IoG's documents are listed in config/corpus.json, written by `npm run corpus`.
 
 llm:

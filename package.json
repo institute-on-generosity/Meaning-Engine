@@ -1,5 +1,5 @@
 {
-  "name": "meaning-engine",
+  "name": "waytomatter",
   "version": "0.1.0",
   "private": true,
   "description": "A conversational reflection companion grounded in IoG's generosity research",
@@ -20,7 +20,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
     "mammoth": "^1.13.0",
-    "next": "^16.4.3",
+    "next": "^16.4.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "unpdf": "^1.8.1",

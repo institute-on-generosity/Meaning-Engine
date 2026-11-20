@@ -3,7 +3,7 @@ import { engineConfig } from "@/lib/config";
 import Chat from "../components/Chat";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "MeaningEngine · Institute on Generosity", robots: { index: false } };
+export const metadata: Metadata = { title: "WaytoMatter · Institute on Generosity", robots: { index: false } };
 
 /** Shared-screen version for IoG convenings: clears itself between people and offers no downloads. */
 export default function Kiosk() {
