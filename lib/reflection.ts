@@ -29,7 +29,7 @@ export interface Reflection extends ReflectionDraft {
   createdAt: string;
 }
 
-/** A passage WaytoMatter cited during the conversation (sent back by the browser). */
+/** A passage WayToMatter cited during the conversation (sent back by the browser). */
 export const CitedPassage = z.object({ title: z.string().max(200), quote: z.string().max(800) });
 export type CitedPassage = z.infer<typeof CitedPassage>;
 export const CitedPassages = z.array(CitedPassage).max(40);

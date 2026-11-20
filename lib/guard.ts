@@ -46,7 +46,7 @@ export function sameOrigin(req: Request): boolean {
 
 /** A JSON error response for a blocked request, or null if the request may proceed. */
 export function guard(req: Request, bucket: string, limit: number, windowMs: number): Response | null {
-  if (!sameOrigin(req)) return Response.json({ error: "Requests must come from the WaytoMatter site." }, { status: 403 });
+  if (!sameOrigin(req)) return Response.json({ error: "Requests must come from the WayToMatter site." }, { status: 403 });
   const { ok, retryAfterSeconds } = rateLimit(`${bucket}:${clientIp(req)}`, limit, windowMs);
   if (!ok) {
     return Response.json(

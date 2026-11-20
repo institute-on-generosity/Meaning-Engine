@@ -1,6 +1,6 @@
-# WaytoMatter: guide for IoG staff
+# WayToMatter: guide for IoG staff
 
-WaytoMatter is IoG's AI reflection tool. A visitor talks with it about their giving, and it responds with questions and ideas drawn only from IoG's Giving Guides, quoting the passage it used. At the end, it writes them a personal giving reflection.
+WayToMatter is IoG's AI reflection tool. A visitor talks with it about their giving, and it responds with questions and ideas drawn only from IoG's Giving Guides, quoting the passage it used. At the end, it writes them a personal giving reflection.
 
 This guide covers everyday upkeep. Most tasks are editing a text file and redeploying; none need programming. The technical details are in the [README](../README.md).
 
@@ -20,12 +20,12 @@ set -a; source .env.local; set +a
 ## Update the Giving Guides
 
 1. Put the new or revised file (`.pdf`, `.docx`, `.md`, or `.txt`) in `corpus/iog/`. To remove a guide, delete its file.
-2. Give it a clean title in `corpus/sources.yaml`. The title is what visitors see when WaytoMatter cites it.
+2. Give it a clean title in `corpus/sources.yaml`. The title is what visitors see when WayToMatter cites it.
 3. Run `npm run corpus -- --dry` to check what will change, then `npm run corpus` to upload.
 4. Commit and push the updated `config/corpus.json`. The host redeploys automatically.
 5. Once the new version is live, run `npm run corpus -- --prune` to delete the old uploaded copies.
 
-WaytoMatter draws only on IoG's own materials. Don't add outside research.
+WayToMatter draws only on IoG's own materials. Don't add outside research.
 
 ## Change how it talks
 
@@ -41,7 +41,7 @@ Commit and push; the site updates on the next deploy. Write prompt changes in pl
 
 **Safety changes need review.** Changes to `config/safety.yaml`, or to the "Safety" and "What you are not" sections of `prompts/conversation.md`, should be reviewed by the licensed mental-health professional who approved the launch version. Run `npm run safety-packet` to produce an up-to-date `docs/safety-review.md` for them.
 
-**Privacy page.** If you change what WaytoMatter collects (for example, adding email), update `/about` (`app/about/page.tsx`) to match.
+**Privacy page.** If you change what WayToMatter collects (for example, adding email), update `/about` (`app/about/page.tsx`) to match.
 
 ## Choose the model (and the cost)
 
@@ -64,15 +64,15 @@ The report shows each model's replies, citations, reflections, and cost side by 
 
 ## Protect the budget
 
-1. **Set a monthly spend limit** in the Anthropic Console (**Settings → Limits**) for the workspace WaytoMatter uses. This is the real cap: past the limit, the site stops answering rather than running up a bill.
+1. **Set a monthly spend limit** in the Anthropic Console (**Settings → Limits**) for the workspace WayToMatter uses. This is the real cap: past the limit, the site stops answering rather than running up a bill.
 2. **Built-in limits:** each visitor's network is capped at 120 messages per 10 minutes and 30 reflections per hour (`limits:` in `config/engine.yaml`). A whole convening on one Wi-Fi network shares one network address, so keep these generous.
-3. **Only the WaytoMatter site can use the API**; requests from other websites are refused.
+3. **Only the WayToMatter site can use the API**; requests from other websites are refused.
 4. **Each reply is capped** at 2,500 output tokens and each reflection at 4,000 (`max_reply_tokens` and `max_reflection_tokens` in `config/engine.yaml`). Normal replies use 120–250, so this only stops runaway output. If a reply is ever cut off, the visitor sees a note offering to continue.
 5. **It stays on its job.** The conversation instructions tell it to decline unrelated tasks, refuse to reveal its instructions, and not hand out whole guides. After changing `prompts/conversation.md`, re-run `npm run compare -- --yes --models claude-haiku-5-5` and check the three "Guardrail:" conversations in the report.
 
 ## See how it's doing
 
-WaytoMatter records three anonymous events, never including conversation text:
+WayToMatter records three anonymous events, never including conversation text:
 
 - **`session_started`:** someone sent their first message.
 - **`reflection_created`:** someone completed a session. This counts toward the 200-session goal.

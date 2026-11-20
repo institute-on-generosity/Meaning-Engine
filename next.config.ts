@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 /**
- * Sites allowed to show WaytoMatter inside an iframe (IoG's website and program pages).
+ * Sites allowed to show WayToMatter inside an iframe (IoG's website and program pages).
  * Override with EMBED_ALLOWED_ORIGINS, space-separated, at build time.
  */
 const embedOrigins =
