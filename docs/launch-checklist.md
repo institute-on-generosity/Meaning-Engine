@@ -51,5 +51,5 @@ The About & privacy page (`app/about/page.tsx`, at `/about`) describes what happ
 
 ## 7. Hand-off
 
-- [ ] **IoG:** staff know where the staff guide is (`docs/staff-guide.md`) and have practiced updating a guide and redeploying.
+- [ ] **IoG:** run the hands-on [staff training session](staff-training.md), so staff can update guides, change advisors, test and redeploy without the fellow.
 - [ ] **IoG:** decide on later features: emailing the reflection (needs an email service) and optional accounts with saved sessions (needs a database).

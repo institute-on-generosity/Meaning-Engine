@@ -22,18 +22,46 @@ set -a; source .env.local; set +a
 1. Put the new or revised file (`.pdf`, `.docx`, `.md`, or `.txt`) in `corpus/iog/`. To remove a guide, delete its file.
 2. Give it a clean title in `corpus/sources.yaml`. The title is what visitors see when GuideGPT cites it.
 3. Run `npm run corpus -- --dry` to check what will change, then `npm run corpus` to upload.
-4. Commit and push the updated `config/corpus.json`. The host redeploys automatically.
-5. Once the new version is live, run `npm run corpus -- --prune` to delete the old uploaded copies.
+4. **New guide:** add it to an advisor's `guides:` list in `config/advisors.yaml` (see the next section), or GuideGPT won't use it. **Removed guide:** delete it from every advisor's list.
+5. Run `npm test`. It fails, naming the file, if an advisor lists a guide that isn't uploaded or a guide belongs to no advisor.
+6. Commit and push `config/corpus.json` and `config/advisors.yaml`. Vercel redeploys the site automatically from GitHub within a few minutes.
+7. Once the new version is live, run `npm run corpus -- --prune` to delete the old uploaded copies.
 
 GuideGPT draws only on IoG's own materials. Don't add outside research.
+
+## Add or change an advisor
+
+GuideGPT's advisors live in [`config/advisors.yaml`](../config/advisors.yaml). Each one has:
+
+| Field | What it is |
+| --- | --- |
+| `id` | Short name used in links, e.g. `evaluation` makes `/?advisor=evaluation`. Lowercase letters, digits and hyphens. |
+| `name`, `tagline`, `description` | What visitors see on the advisor's card. |
+| `opening_message` | The advisor's first message in the chat. |
+| `reflection_label`, `button_label` | What the end-of-session document is called ("evaluation plan") and its button ("Create my evaluation plan"). |
+| `guides` | The Giving Guides it reads, as paths from `config/corpus.json` (e.g. `iog/ecosystem-mapping.docx`). |
+| `focus` | Instructions for this advisor only: who it is, the loose stages of its conversation, and what it must never do. |
+
+**To add an advisor,** copy an existing block, give it a new `id`, and change the fields. The first advisor in the file is the default.
+
+**Keep each advisor's guides under about 85,000 tokens in all.** Each guide's size is in `config/corpus.json` under `tokens`. On Claude Haiku, a request over 100,000 tokens costs about five times as much per token, so an advisor that reads too much quietly becomes five times as expensive. If an advisor needs more guides, split it into two advisors.
+
+**Write `focus` like a brief to a new colleague.** Say what the advisor helps with, list four or five stages in the order a good conversation usually goes, and spell out its limits: for example, never rate a specific organization, or never recommend amounts. The shared rules in `prompts/conversation.md` (tone, citing the guides, safety) apply to every advisor automatically.
+
+**After any change,**
+1. run `npm test`;
+2. add or adjust a test conversation for the advisor in `scripts/compare-models.ts` (each has an `advisor:` line);
+3. run `npm run compare -- --yes --models claude-haiku-5-5` (under $0.10), read the report, and check the "Guardrail" and "Safety" conversations still behave;
+4. commit and push.
 
 ## Change how it talks
 
 | To change… | Edit this file |
 | --- | --- |
-| Tone, the flow of the conversation, what it won't do | `prompts/conversation.md` |
+| Tone, citing the guides, what every advisor won't do, safety | `prompts/conversation.md` |
+| One advisor's name, opening message, guides, conversation stages and limits | `config/advisors.yaml` |
 | What goes in the end-of-session reflection | `prompts/reflection.md` |
-| The opening message, session length, when "Create my reflection" appears | `config/engine.yaml` |
+| Session length, and after how many messages the "Create my…" button appears | `config/engine.yaml` |
 | Words that trigger the crisis message, and the message itself | `config/safety.yaml` |
 | Colors and fonts | the top of `app/globals.css` |
 
@@ -49,14 +77,16 @@ The model is set in `config/engine.yaml` (`chat_model` and `reflection_model`). 
 
 | Model | Per session | Notes |
 | --- | --- | --- |
-| `claude-haiku-5-5` | ~$0.30 | **Current choice.** Fastest and cheapest |
-| `claude-sonnet-5-5` | ~$0.80–1.00 | |
-| `claude-opus-5-5` | ~$1.60–2.00 | Most capable; cites the guides slightly more consistently |
+| `claude-haiku-5-5` | ~$0.02–0.04 | **Current choice.** Fastest and cheapest |
+| `claude-sonnet-5-5` | ~$0.30–0.40 | |
+| `claude-opus-5-5` | ~$0.60–0.70 | Most capable; cites the guides slightly more consistently |
+
+These figures assume each advisor stays under about 85,000 tokens of guides (see "Add or change an advisor"). At 500 sessions a month on Haiku, that's roughly $10–20.
 
 To compare them on the same test conversations:
 
 ```bash
-npm run compare            # shows what it will run and the estimated cost (about $6 for all three models, $0.60 for Haiku alone)
+npm run compare            # shows what it will run and the estimated cost (about $4.50 for all three models, under $0.10 for Haiku alone)
 npm run compare -- --yes   # runs it and writes evals/out/<date>/report.md
 ```
 
@@ -101,10 +131,10 @@ Keep the web app URL private: anyone who has it can add rows to the Sheet. Run *
 
 ## Run it at a convening (kiosk mode)
 
-Open the site's `/kiosk` page (for example `https://<your-site>/kiosk`) on the shared laptop or tablet. In kiosk mode:
+Open the site's `/kiosk` page (for example `https://<your-site>/kiosk`) on the shared laptop or tablet. Each visitor picks an advisor on the welcome screen. In kiosk mode:
 
 - The screen clears itself after 3 minutes without activity, after a 30-second "Still there?" warning. Change these under `kiosk:` in `config/engine.yaml`.
-- The "Start over" button becomes **End session** and returns to the welcome screen.
+- The "Start over" button becomes **End session** and returns to the welcome screen and its choice of advisors.
 - At the end, visitors can **Print** their reflection or **Finish and clear the screen**. Download and copy are hidden, so nothing is left on the shared device.
 - Survey answers are tagged `kiosk` so convening feedback can be told apart from the website's.
 

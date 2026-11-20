@@ -13,7 +13,7 @@ Advisors are defined in [`config/advisors.yaml`](config/advisors.yaml): name, op
 
 It is explicitly **not** a therapist or a financial advisor. Its advisors help people think things through; they don't decide for them.
 
-**IoG staff:** day-to-day upkeep (updating guides, changing the model, survey results, convenings) is in the [staff guide](docs/staff-guide.md). What's left before launch is in the [launch checklist](docs/launch-checklist.md).
+**IoG staff:** day-to-day upkeep (updating guides, changing the model, survey results, convenings) is in the [staff guide](docs/staff-guide.md), and the [staff training plan](docs/staff-training.md) walks new maintainers through it hands-on. What's left before launch is in the [launch checklist](docs/launch-checklist.md).
 
 ## How it works
 
