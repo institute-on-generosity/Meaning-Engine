@@ -1,6 +1,7 @@
 import { ZodError } from "zod";
 import { engineConfig } from "@/lib/config";
 import { ModelDeclinedError } from "@/lib/llm";
+import { advisorFor } from "@/lib/advisors";
 import { CitedPassages, createReflection, type CitedPassage } from "@/lib/reflection";
 import { modeOf, recordEvent } from "@/lib/events";
 import { guard } from "@/lib/guard";
@@ -28,8 +29,10 @@ export async function POST(req: Request) {
     return Response.json({ error: "Talk a little longer before creating a reflection." }, { status: 400 });
   }
   try {
-    const reflection = await createReflection(messages, cited);
+    const advisor = advisorFor((body as { advisor?: unknown } | null)?.advisor);
+    const reflection = await createReflection(messages, cited, { advisor });
     await recordEvent({
+      advisor: advisor.id,
       type: "reflection_created",
       mode: modeOf(body),
       turns: userTurns(messages),

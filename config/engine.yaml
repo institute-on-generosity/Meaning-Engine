@@ -33,7 +33,4 @@ session:
   max_message_chars: 4000
   reflection_after_turns: 4 # the "Create my reflection" button appears after this many user messages
 
-opening_message: >-
-  Welcome. This is a space to think about your giving: why you give, what you care about,
-  and what you're unsure about. There are no right answers. To start, what's on your mind
-  about your giving right now?
+# Each advisor's opening message, name and focus live in config/advisors.yaml.

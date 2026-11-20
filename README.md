@@ -1,15 +1,24 @@
 # GuideGPT
 
-A conversational reflection tool from the Institute on Generosity (IoG). A person talks about their giving: why they give, what they care about, and what they're unsure about. GuideGPT responds with questions and insights drawn only from the materials IoG has shared, quoting its sources. At the end, it writes a personal giving reflection the person can download, copy, or print.
+AI advisors from the Institute on Generosity (IoG) that help people think through their giving. A person picks an advisor and talks with it; GuideGPT responds with questions and insights drawn only from IoG's Giving Guides, quoting its sources. At the end, it writes a short reflection or plan the person can download, copy, or print.
 
-It is explicitly **not** a therapist or a financial advisor. It's a structured reflection companion.
+| Advisor | For | Giving Guides it reads |
+| --- | --- | --- |
+| **Giving Reflection** | Why you give and what makes it meaningful | Meaningful Generosity, Clarifying Your Giving Criteria and Priorities, Philanthropic Giving Models, Philanthropic Asset Portfolio |
+| **Nonprofit Evaluation Coach** | How to judge whether a nonprofit is effective | Initial Assessment, In-Depth Due Diligence, Evaluating Effectiveness, Site Visit, Funder–Nonprofit Partnership |
+| **Giving Strategy Planner** | Shaping a giving plan | Clarifying Your Giving Criteria and Priorities, Ecosystem Mapping, Philanthropic Giving Models, Philanthropic Asset Portfolio, Philanthropic Risk |
+| **Leadership & Advocacy Guide** | Board service and policy advocacy | Nonprofit Board Service, Policy Advocacy |
+
+Advisors are defined in [`config/advisors.yaml`](config/advisors.yaml): name, opening message, which guides it reads, and its focus. Link straight to one with `/?advisor=<id>` (for example `/?advisor=evaluation`).
+
+It is explicitly **not** a therapist or a financial advisor. Its advisors help people think things through; they don't decide for them.
 
 **IoG staff:** day-to-day upkeep (updating guides, changing the model, survey results, convenings) is in the [staff guide](docs/staff-guide.md). What's left before launch is in the [launch checklist](docs/launch-checklist.md).
 
 ## How it works
 
 1. **IoG's corpus.** IoG's documents (currently the 13 GG2026 Giving Guides) go in `corpus/iog/`. `npm run corpus` extracts each one's text and uploads it to Anthropic's file storage, then records the file ids in `config/corpus.json`. These documents are the tool's only source: the prompts forbid outside studies, statistics, and frameworks.
-2. **Each turn.** Claude gets the whole corpus plus the conversation. The documents come first and are identical for every session, so prompt caching makes repeated reads about a twentieth of the normal input price. Claude replies with a question or reflection. When it draws on a guide, Anthropic's citations feature returns the exact sentence it relied on, and the chat shows that quote under the reply.
+2. **Each turn.** Claude gets the chosen advisor's guides in full plus the conversation. The guides come first and are identical for every session with that advisor, so prompt caching makes repeated reads about a twentieth of the normal input price. Claude replies with a question or reflection. When it draws on a guide, Anthropic's citations feature returns the exact sentence it relied on, and the chat shows that quote under the reply.
 3. **Safety first.** Before any model call, each message is checked against the crisis phrases in `config/safety.yaml`. On a match, the app shows crisis resources (988, Crisis Text Line, NAMI, findahelpline.com) and doesn't call the model. The conversation prompt also tells Claude to share these resources if it notices distress the phrase list misses.
 4. **Reflection.** After a few exchanges, a "Create my reflection" button appears. Claude writes a structured reflection: a summary, values, practices to try, and questions to keep. Each practice can name the guides it draws on; the code keeps only titles that match a real document.
 
@@ -54,7 +63,7 @@ npm run safety-packet           # regenerate docs/safety-review.md
 
 ## Size limits
 
-The whole corpus is sent on every turn. That works because it's small: the 13 guides are about 230k tokens as sent (with citations on, as measured by `npm run corpus`), and Claude reads up to 1M. Cost and first-reply time grow with the corpus, and `npm run corpus` warns above about 400k tokens. Well past that point, it would make sense to switch to search, giving Claude only the passages relevant to each turn. That version (OpenAI embeddings + Supabase pgvector) is in this repo's git history, in the first commit.
+Each advisor's guides are sent in full on every turn. That works because they're small: 72–86k tokens per advisor as sent (with citations on; per-guide counts are in `config/corpus.json`), and Claude reads up to 1M. Keep each advisor under about 85k tokens: on Claude Haiku, a request over 100k tokens costs about five times as much per token. If an advisor needs more, split it into two advisors. `npm run corpus` warns when the whole corpus passes about 400k tokens. Well past that point, it would make sense to switch to search, giving Claude only the passages relevant to each turn. That version (OpenAI embeddings + Supabase pgvector) is in this repo's git history, in the first commit.
 
 ## Changing the conversation
 
@@ -62,9 +71,10 @@ Most changes need no code:
 
 | To change… | Edit |
 | --- | --- |
-| How GuideGPT talks, the session arc, scope limits | `prompts/conversation.md` |
+| How every advisor talks, scope limits, safety | `prompts/conversation.md` |
+| An advisor's name, opening message, guides, focus and session arc; adding an advisor | `config/advisors.yaml` |
 | What goes into the end-of-session reflection | `prompts/reflection.md` (fields are in `lib/reflection.ts`) |
-| Opening message, session length, when the reflection button appears | `config/engine.yaml` |
+| Session length, when the reflection button appears | `config/engine.yaml` |
 | Model and effort | `config/engine.yaml` |
 | Crisis phrases and the crisis message | `config/safety.yaml` |
 | Colors and fonts (IoG branding) | the tokens at the top of `app/globals.css` |
@@ -75,20 +85,15 @@ Models are set in `config/engine.yaml` under `llm:`. Provider code lives in [`li
 
 ## Cost
 
-Each turn sends about 254k tokens, nearly all of it the corpus. Prompt caching charges a one-time write when the cache is cold (1.25× the input price), then a twentieth of the input price for each turn that reuses it within 5 minutes. The reflection doesn't resend the corpus, only the passages the conversation cited, so it costs about $0.03. Rough cost of a 10-turn session plus a reflection:
+Each turn sends the advisor's guides (72–86k tokens) plus the conversation. Prompt caching charges a one-time write when the cache is cold (1.25× the input price), then about a tenth of the input price for each turn that reuses it within 5 minutes. The reflection doesn't resend the guides, only the passages the conversation cited. Rough cost of a 10-turn session plus a reflection, with the cache cold:
 
 | Model (`chat_model`) | Per session |
 | --- | --- |
-| `claude-haiku-5-5` (default) | ~$0.30 |
-| `claude-sonnet-5-5` | ~$0.80–1.00 |
-| `claude-opus-5-5` | ~$1.60–2.00 |
+| `claude-haiku-5-5` (default) | ~$0.02–0.04 |
+| `claude-sonnet-5-5` | ~$0.30–0.40 |
+| `claude-opus-5-5` | ~$0.60–0.70 |
 
-Most of that is the first turn's cache write (about $1.10 on Opus). A pause of more than 5 minutes between replies writes the cache again, hence the upper end of each range. A measured 4-turn session plus a reflection on Opus (November 2026) came to about $1.30.
-
-The proposal targets $0.01–0.05 per session. The biggest levers:
-
-- **The model.** Haiku is the default since November 2026. In 7 side-by-side test conversations it matched Opus on safety and tone; it cited the guides slightly less consistently (2 of 24 replies credited IoG without a formal citation, against 0 for Opus), at about a fifth of the cost: $0.07 against $0.36 per test conversation once the cache was warm.
-- **A smaller corpus.** *Policy Advocacy* alone is about a fifth of the corpus, and IoG marks only parts of it and of *Philanthropic Asset Portfolio* as core reading.
+Measured on Haiku (November 2026): 12 four-message test conversations across the four advisors cost $0.08 in all, $0.002–0.016 each. At 500 sessions a month that's roughly $10–20, inside the proposal's $0.01–0.05 per session. Before advisors, when every turn sent all 13 guides (254k tokens, over Haiku's 100k price tier), a session cost about $0.30.
 
 The server log prints input, cache-read, cache-write, and output tokens for every turn.
 
@@ -110,7 +115,8 @@ GitHub runs the typecheck, tests, and a production build on every push (`.github
 
 ## Status
 
-- [x] IoG's 13 Giving Guides as the full grounding corpus, with quoted citations
+- [x] IoG's 13 Giving Guides as the grounding corpus, with quoted citations
+- [x] Four advisors (reflection, nonprofit evaluation, giving strategy, leadership & advocacy), each reading only its guides
 - [x] Conversation design (prompt), crisis interception, scope limits
 - [x] End-of-session giving reflection with download / copy / print
 - [x] IoG branding (2026 brand guide palette and type, Prompt Library layout)
@@ -121,6 +127,6 @@ GitHub runs the typecheck, tests, and a production build on every push (`.github
 - [x] About & privacy page, security headers, accessibility pass (WCAG AA contrast, screen-reader labels)
 - [x] Safety review packet, launch checklist, automatic checks on GitHub
 - [ ] **Licensed professional review of `config/safety.yaml` and the safety section of `prompts/conversation.md` (required before public launch)**
-- [ ] Upload the corpus with IoG's Anthropic key; run `npm run compare -- --yes`; pick the model
+- [x] Upload the corpus with IoG's Anthropic key; run `npm run compare -- --yes`; pick the model (Haiku)
 - [ ] Conversation design workshop with IoG staff; tune `prompts/conversation.md`
 - [ ] Optional accounts and saved sessions; email the reflection

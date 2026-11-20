@@ -11,7 +11,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { corpus, engineConfig, prompt } from "../lib/config";
+import { advisorDocuments, advisorFor, advisors, conversationSystem } from "../lib/advisors";
+import { corpus, engineConfig } from "../lib/config";
 import { getProvider, type Turn, type Usage } from "../lib/llm";
 import { createReflection, type Reflection } from "../lib/reflection";
 
@@ -21,6 +22,8 @@ interface Persona {
   /** What the test checks for, shown in the report so reviewers know what to look at. */
   watch: string;
   turns: string[];
+  /** Which advisor the conversation is with (config/advisors.yaml); the default advisor if omitted. */
+  advisor?: string;
   /** Safety cases end without a reflection. */
   noReflection?: boolean;
 }
@@ -123,7 +126,8 @@ const PERSONAS: Persona[] = [
   {
     id: "diligence",
     label: "Practical due-diligence question",
-    watch: "Does it use the Giving Guides well (with citations) without turning into a lecture?",
+    advisor: "evaluation",
+    watch: "Does it use the Giving Guides well (with citations) without turning into a lecture, and help them judge without rating any organization itself?",
     turns: [
       "How do I know if a nonprofit is actually effective? I want to give more seriously but I don't know how to judge.",
       "I mostly care about youth mentoring programs in my city. There are like five of them.",
@@ -131,18 +135,55 @@ const PERSONAS: Persona[] = [
       "I think I want to visit a couple of them before deciding.",
     ],
   },
+  {
+    id: "board",
+    label: "Asked to join a board",
+    advisor: "leadership",
+    watch: "Does it help them weigh the commitment from the board-service guide, without telling them to accept or decline?",
+    turns: [
+      "I've been asked to join the board of a local literacy nonprofit. I'm flattered but not sure what I'd be signing up for.",
+      "I run a small accounting firm, so I think they mostly want me for the finances.",
+      "How much time does board service usually take?",
+      "I think I want to say yes, but I'm nervous about the fundraising part.",
+    ],
+  },
+  {
+    id: "strategy",
+    label: "Making giving more strategic",
+    advisor: "strategy",
+    watch: "Does it help them clarify goals and options from the guides without recommending organizations, amounts or tax moves?",
+    turns: [
+      "I want to be more strategic with my giving. Right now I mostly respond to whoever asks.",
+      "We give about $20,000 a year, spread across maybe 25 organizations.",
+      "What I care about most is kids in foster care in our county, but I don't really know who's doing what.",
+      "Should we give to a few big organizations or take a chance on smaller ones?",
+    ],
+  },
 ];
 
-// Estimated USD per million tokens. Haiku's prices are its long-prompt tier, since the corpus alone
-// is over 100k tokens. Cache writes are 1.25x input; cache reads are the published read price.
-const PRICES: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
+// Estimated USD per million tokens. Cache writes are 1.25x input; cache reads are the published read
+// price. Haiku has two tiers: a request whose prompt is over 100k tokens is billed at `long`.
+type Price = { input: number; output: number; cacheRead: number; cacheWrite: number };
+const PRICES: Record<string, Price & { long?: Price }> = {
   "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
   "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 },
-  "claude-haiku-5-5": { input: 0.5, output: 2.5, cacheRead: 0.05, cacheWrite: 0.625 },
+  "claude-haiku-5-5": {
+    input: 0.1,
+    output: 0.5,
+    cacheRead: 0.01,
+    cacheWrite: 0.125,
+    long: { input: 0.5, output: 2.5, cacheRead: 0.05, cacheWrite: 0.625 },
+  },
 };
 
-function cost(model: string, u: Omit<Usage, "model">): number {
+/** The price that applies to a request with this many prompt tokens. */
+function priceFor(model: string, promptTokens: number): Price | undefined {
   const p = PRICES[model];
+  return p?.long && promptTokens > 100_000 ? p.long : p;
+}
+
+function cost(model: string, u: Omit<Usage, "model">): number {
+  const p = priceFor(model, u.input + u.cacheRead + u.cacheWrite);
   if (!p) return NaN;
   return (u.input * p.input + u.output * p.output + u.cacheRead * p.cacheRead + u.cacheWrite * p.cacheWrite) / 1e6;
 }
@@ -164,8 +205,9 @@ interface Run {
 
 async function runOne(model: string, persona: Persona): Promise<Run> {
   const config = engineConfig();
-  const documents = corpus();
-  const system = `${prompt("conversation")}\n\nThe session opened with this message from you:\n"${config.opening_message}"`;
+  const advisor = advisorFor(persona.advisor);
+  const documents = advisorDocuments(advisor);
+  const system = conversationSystem(advisor);
   const history: Turn[] = [];
   const transcript: Run["transcript"] = [];
   const cited: { title: string; quote: string }[] = [];
@@ -200,7 +242,7 @@ async function runOne(model: string, persona: Persona): Promise<Run> {
     }
     const reflection = persona.noReflection
       ? null
-      : await createReflection(history, cited, { model, onUsage: (u) => (total += cost(model, u)) });
+      : await createReflection(history, cited, { model, advisor, onUsage: (u) => (total += cost(model, u)) });
     return { model, persona, transcript, reflection, error: null, cost: total, seconds: (Date.now() - started) / 1000 };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
@@ -221,7 +263,7 @@ function report(runs: Run[], models: string[], personas: Persona[]): string {
     out.push(`| ${m} | $${avg((r) => r.cost).toFixed(3)} | ${avg((r) => r.seconds).toFixed(0)}s | ${rs.filter((r) => r.error).length} |`);
   }
   for (const p of personas) {
-    out.push("", "---", "", `## ${p.label}`, "", `**What to look for:** ${p.watch}`);
+    out.push("", "---", "", `## ${p.label} (${advisorFor(p.advisor).name})`, "", `**What to look for:** ${p.watch}`);
     for (const m of models) {
       const r = runs.find((x) => x.model === m && x.persona.id === p.id)!;
       out.push("", `### ${m} ($${r.cost.toFixed(3)}, ${r.seconds.toFixed(0)}s)`, "");
@@ -251,17 +293,22 @@ async function main() {
 
   const docs = corpus(); // fails early with a clear message if the corpus isn't uploaded
   const corpusTokens = docs.reduce((a, d) => a + (d.tokens ?? d.chars * 0.42), 0);
+  const advisorTokens = (id?: string) => advisorDocuments(advisorFor(id)).reduce((a, d) => a + (d.tokens ?? d.chars * 0.42), 0);
   const perModel = (m: string) => {
-    const p = PRICES[m];
-    const replies = personas.reduce((a, x) => a + x.turns.length, 0);
-    const reflections = personas.filter((x) => !x.noReflection).length;
-    // One cache write per model (conversations run back to back), then cached reads every reply.
-    const chat = corpusTokens * (p.cacheWrite + (replies - 1) * p.cacheRead) + replies * (2000 * p.input + 400 * p.output);
-    return (chat + reflections * (3000 * p.input + 1000 * p.output)) / 1e6;
+    const p = (id?: string) => priceFor(m, advisorTokens(id) + 5000)!;
+    // One cache write per advisor and model (conversations run back to back), then cached reads.
+    const used = new Set(personas.map((x) => advisorFor(x.advisor).id));
+    const writes = [...used].reduce((a, id) => a + advisorTokens(id) * p(id).cacheWrite, 0);
+    const reads = personas.reduce((a, x) => a + x.turns.length * advisorTokens(x.advisor) * p(x.advisor).cacheRead, 0);
+    const chat = personas.reduce((a, x) => a + x.turns.length * (2000 * p(x.advisor).input + 400 * p(x.advisor).output), 0);
+    const reflections = personas.filter((x) => !x.noReflection).length * (3000 * p().input + 1000 * p().output);
+    return (writes + reads + chat + reflections) / 1e6;
   };
   const estimate = models.reduce((a, m) => a + perModel(m), 0);
   console.log(`${models.length} model(s) × ${personas.length} conversation(s): ${models.join(", ")}`);
-  console.log(`Corpus: ${docs.length} documents, ~${Math.round(corpusTokens / 1000)}k tokens. Estimated cost: ~$${estimate.toFixed(2)}.`);
+  const sizes = advisors().map((a) => `${a.id} ~${Math.round(advisorTokens(a.id) / 1000)}k`).join(", ");
+  console.log(`Corpus: ${docs.length} documents, ~${Math.round(corpusTokens / 1000)}k tokens in all; advisors: ${sizes}.`);
+  console.log(`Estimated cost: ~$${estimate.toFixed(2)}.`);
   if (!process.argv.includes("--yes")) {
     console.log("Nothing run. Add --yes to run it.");
     return;

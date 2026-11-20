@@ -27,7 +27,6 @@ const EngineConfig = z.object({
     max_message_chars: z.number().int().positive(),
     reflection_after_turns: z.number().int().positive(),
   }),
-  opening_message: z.string(),
 });
 export type EngineConfig = z.infer<typeof EngineConfig>;
 

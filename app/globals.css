@@ -81,6 +81,15 @@ button:disabled { cursor: default; opacity: 0.45; }
 .stats dt { font: 700 26px/1.1 var(--display); }
 .stats dd { margin: 6px 0 0; font-size: 9.5px; color: var(--ink-soft); }
 
+/* Intro: advisor cards */
+.advisors { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; }
+.advisor-card { background: var(--white); border: 1px solid var(--rule); border-radius: 3px; padding: 20px 20px 22px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.advisor-card h2 { font: 700 22px/1.15 var(--display); margin: 0; }
+.advisor-tagline { margin: 0; font-weight: 500; }
+.advisor-description { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-soft); flex: 1; }
+.advisor-card .btn-dark { align-self: flex-start; }
+a.btn-accent { display: inline-block; text-decoration: none; }
+
 /* Intro: dark "how it works" block */
 .dark { background: var(--black); color: var(--on-dark); }
 .dark-inner { max-width: 1120px; margin: 0 auto; padding: 56px 16px 64px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 56px; }

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { corpus, engineConfig, prompt } from "./config";
+import { advisors, reflectionSystem, type Advisor } from "./advisors";
+import { corpus, engineConfig } from "./config";
 import { getProvider, type Turn, type Usage } from "./llm";
 
 export const ReflectionSchema = z.object({
@@ -42,7 +43,7 @@ export const CitedPassages = z.array(CitedPassage).max(40);
 export async function createReflection(
   messages: Turn[],
   cited: CitedPassage[],
-  options: { model?: string; onUsage?: (usage: Usage) => void } = {},
+  options: { model?: string; advisor?: Advisor; onUsage?: (usage: Usage) => void } = {},
 ): Promise<Reflection> {
   const config = engineConfig();
   // Only passages from real guides count; a browser can send anything.
@@ -64,7 +65,7 @@ export async function createReflection(
   const draft = await getProvider().structured({
     model: options.model ?? config.llm.reflection_model,
     effort: config.llm.reflection_effort,
-    system: prompt("reflection"),
+    system: reflectionSystem(options.advisor ?? advisors()[0]),
     prompt: `<cited_passages>\n${sources}\n</cited_passages>\n\n<conversation>\n${transcript}\n</conversation>\n\nWrite this person's giving reflection.`,
     documents: [],
     schema: ReflectionSchema,

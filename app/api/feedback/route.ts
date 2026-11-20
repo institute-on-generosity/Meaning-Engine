@@ -1,4 +1,5 @@
 import { z, ZodError } from "zod";
+import { advisorFor } from "@/lib/advisors";
 import { recordEvent, modeOf } from "@/lib/events";
 import { guard } from "@/lib/guard";
 
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     const detail = err instanceof ZodError ? err.issues[0]?.message : "invalid JSON";
     return Response.json({ error: `Bad request: ${detail}` }, { status: 400 });
   }
-  await recordEvent({ type: "survey", mode: modeOf(body), ...data });
+  const advisor = advisorFor((body as { advisor?: unknown } | null)?.advisor).id;
+  await recordEvent({ type: "survey", mode: modeOf(body), advisor, ...data });
   return new Response(null, { status: 204 });
 }

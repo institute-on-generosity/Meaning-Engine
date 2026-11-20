@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
-import { corpus, engineConfig, prompt, safetyConfig } from "@/lib/config";
+import { advisorDocuments, advisorFor, conversationSystem } from "@/lib/advisors";
+import { engineConfig, safetyConfig } from "@/lib/config";
 import { getProvider } from "@/lib/llm";
 import { detectCrisis } from "@/lib/safety";
 import { modeOf, recordEvent } from "@/lib/events";
@@ -45,18 +46,21 @@ export async function POST(req: Request) {
           return;
         }
         if (userTurns(messages) > config.session.max_user_turns) {
-          send({ type: "notice", text: "This session has reached its length limit. Create your reflection, or start a new session." });
+          send({ type: "notice", text: "This session has reached its length limit. Create your summary with the button below, or start a new session." });
           return;
         }
 
-        if (userTurns(messages) === 1) await recordEvent({ type: "session_started", mode: modeOf(payload) });
+        const advisor = advisorFor((payload as { advisor?: unknown } | null)?.advisor);
+        if (userTurns(messages) === 1) {
+          await recordEvent({ type: "session_started", mode: modeOf(payload), advisor: advisor.id });
+        }
 
         for await (const event of getProvider().streamReply({
           model: config.llm.chat_model,
           effort: config.llm.chat_effort,
-          system: `${prompt("conversation")}\n\nThe session opened with this message from you:\n"${config.opening_message}"`,
+          system: conversationSystem(advisor),
           history: messages,
-          documents: corpus(),
+          documents: advisorDocuments(advisor),
           maxTokens: config.llm.max_reply_tokens,
         })) {
           if (event.type === "declined") {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { citedTags, type Citation } from "@/lib/citations";
+import type { AdvisorSummary } from "@/lib/advisors";
 import type { Reflection } from "@/lib/reflection";
 
 type Message =
@@ -11,16 +12,22 @@ type Message =
   | { role: "system"; kind: "crisis" | "notice" | "error"; content: string };
 
 interface Props {
-  opening: string;
+  advisors: AdvisorSummary[];
+  /** Start straight in this advisor's conversation (from a ?advisor= link). */
+  initialAdvisor?: string;
   reflectionAfter: number;
   maxChars: number;
   /** Shared-screen mode for convenings: clears itself when idle and offers no downloads. */
   kiosk?: { idleSeconds: number; warningSeconds: number };
 }
 
-export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Props) {
+export default function Chat({ advisors, initialAdvisor, reflectionAfter, maxChars, kiosk }: Props) {
   const mode = kiosk ? "kiosk" : "web";
-  const [started, setStarted] = useState(false);
+  const [advisorId, setAdvisorId] = useState<string | null>(
+    advisors.some((a) => a.id === initialAdvisor) ? (initialAdvisor as string) : null,
+  );
+  const started = advisorId !== null;
+  const advisor = advisors.find((a) => a.id === advisorId) ?? advisors[0];
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -108,7 +115,7 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: transcript(next), mode }),
+        body: JSON.stringify({ messages: transcript(next), mode, advisor: advisor.id }),
       });
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => ({}));
@@ -161,7 +168,7 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
       const res = await fetch("/api/reflection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: transcript(messages), cited: citedPassages(messages), mode }),
+        body: JSON.stringify({ messages: transcript(messages), cited: citedPassages(messages), mode, advisor: advisor.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong. Please try again.");
@@ -181,25 +188,24 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
     setCountdown(null);
   }
 
-  /** Back to the welcome screen with nothing left behind (kiosk end of session). */
+  /** Back to the welcome screen and advisor choice, with nothing left behind. */
   function clearAll() {
     clearConversation();
-    setStarted(false);
+    setAdvisorId(null);
     window.scrollTo(0, 0);
   }
 
   function restart() {
     const question = kiosk ? "End this session? Everything on screen will be cleared." : "Start over? This conversation will be cleared.";
     if (messages.length && !confirm(question)) return;
-    if (kiosk) clearAll();
-    else clearConversation();
+    clearAll();
   }
 
-  if (!started) return <Intro kiosk={!!kiosk} onBegin={() => setStarted(true)} />;
+  if (!started) return <Intro kiosk={!!kiosk} advisors={advisors} onChoose={(id) => setAdvisorId(id)} />;
 
   return (
     <div className="app">
-      <Header onRestart={restart} restartLabel={kiosk ? "End session" : "Start over"} />
+      <Header onRestart={restart} restartLabel={kiosk ? "End session" : "Start over"} advisorName={advisor.name} />
       {countdown !== null && (
         <div className="idle" role="alertdialog" aria-labelledby="idle-title">
           <div className="idle-card">
@@ -223,9 +229,9 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
       <div className="shell">
       <main className="thread" role="log" aria-live="polite" aria-labelledby="thread-title">
         <h1 id="thread-title" className="visually-hidden">
-          Conversation with GuideGPT
+          Conversation with GuideGPT&rsquo;s {advisor.name}
         </h1>
-        <AssistantBubble content={opening} sources={[]} />
+        <AssistantBubble content={advisor.opening} sources={[]} />
         {messages.map((m, i) =>
           m.role === "user" ? (
             <div key={i} className="msg user">
@@ -247,12 +253,12 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
             <span />
           </div>
         )}
-        {reflecting && <p className="status">Writing your reflection…</p>}
+        {reflecting && <p className="status">Writing your {advisor.reflectionLabel}…</p>}
         {reflectionError && <p className="status error">{reflectionError}</p>}
         {reflection && (
           <>
-            <ReflectionCard reflection={reflection} kiosk={!!kiosk} onFinish={clearAll} />
-            <SurveyCard turns={userTurns} mode={mode} />
+            <ReflectionCard reflection={reflection} kiosk={!!kiosk} onFinish={clearAll} advisor={advisor} />
+            <SurveyCard turns={userTurns} mode={mode} advisor={advisor.id} />
           </>
         )}
         <div ref={endRef} />
@@ -261,7 +267,7 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
       <footer className="composer">
         {userTurns >= reflectionAfter && !reflection && (
           <button className="reflect" onClick={reflect} disabled={busy || reflecting}>
-            {reflecting ? "Writing your reflection…" : "Create my reflection"}
+            {reflecting ? `Writing your ${advisor.reflectionLabel}…` : advisor.buttonLabel}
           </button>
         )}
         <form
@@ -312,13 +318,21 @@ export default function Chat({ opening, reflectionAfter, maxChars, kiosk }: Prop
   );
 }
 
-function Header({ onRestart, restartLabel = "Start over" }: { onRestart?: () => void; restartLabel?: string }) {
+function Header({
+  onRestart,
+  restartLabel = "Start over",
+  advisorName,
+}: {
+  onRestart?: () => void;
+  restartLabel?: string;
+  advisorName?: string;
+}) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
         <div className="brand">
           <img className="org" src="/iog-logo-white.svg" alt="Institute on Generosity" width={106} height={30} />
-          <span className="product">GuideGPT · a reflection on your giving</span>
+          <span className="product">GuideGPT · {advisorName ?? "advisors for your giving"}</span>
         </div>
         {onRestart && (
           <button className="ghost" onClick={onRestart}>
@@ -330,26 +344,25 @@ function Header({ onRestart, restartLabel = "Start over" }: { onRestart?: () => 
   );
 }
 
-const STAGES = [
-  ["Opening", "What brought you here, and what's on your mind about giving right now."],
-  ["Story", "Moments that felt meaningful, ones that felt like obligation, and who taught you to give."],
-  ["Values", "What those moments reveal about what you care about."],
-  ["Tensions", "What you're unsure about or pulled between: near or far, now or later, head or heart."],
-  ["Intention", "One small, concrete practice you want to try, and a written reflection to keep."],
+const STEPS = [
+  ["Pick an advisor", "Reflection, nonprofit evaluation, or giving strategy: each one reads the Giving Guides that fit its job."],
+  ["Talk it through", "One question at a time, at your pace. Stop whenever you like."],
+  ["See the source", "When an advisor draws on a Giving Guide, it quotes the passage so you can check."],
+  ["Keep the result", "End with a short written reflection or plan, in your own words, to keep."],
 ];
 
-function Intro({ onBegin, kiosk }: { onBegin: () => void; kiosk: boolean }) {
+function Intro({ onChoose, kiosk, advisors }: { onChoose: (id: string) => void; kiosk: boolean; advisors: AdvisorSummary[] }) {
   return (
     <div className="app">
       <Header />
       <section className="hero">
         <div className="hero-inner">
-          <span className="chip">Reflection tool</span>
-          <h1>What makes your giving meaningful?</h1>
+          <span className="chip">GuideGPT</span>
+          <h1>Think through your giving with IoG&rsquo;s Giving Guides</h1>
           <div className="hero-cols">
             <p className="lede">
-              A guided conversation to help you think more intentionally about why you give, what you care about, and
-              what you&rsquo;re unsure about. It draws on the Institute on Generosity&rsquo;s research and Giving Guides.
+              Pick an advisor and talk through what&rsquo;s on your mind. Each one draws on the Institute on
+              Generosity&rsquo;s Giving Guides, quoting the passage behind each idea.
             </p>
             <p className="aside">
               GuideGPT asks questions; it doesn&rsquo;t hand you answers. It won&rsquo;t tell you where or how much to
@@ -362,17 +375,26 @@ function Intro({ onBegin, kiosk }: { onBegin: () => void; kiosk: boolean }) {
               <dd>Minutes</dd>
             </div>
             <div>
-              <dt>5</dt>
-              <dd>Stages of reflection</dd>
+              <dt>{advisors.length}</dt>
+              <dd>Advisors</dd>
             </div>
             <div>
               <dt>Private</dt>
               <dd>Nothing is saved</dd>
             </div>
           </dl>
-          <button className="btn-dark" onClick={onBegin}>
-            Begin the reflection →
-          </button>
+          <ul className="advisors" id="advisors" aria-label="Choose an advisor">
+            {advisors.map((a) => (
+              <li key={a.id} className="advisor-card">
+                <h2>{a.name}</h2>
+                <p className="advisor-tagline">{a.tagline}</p>
+                <p className="advisor-description">{a.description}</p>
+                <button className="btn-dark" onClick={() => onChoose(a.id)}>
+                  Start <span className="visually-hidden">{a.name}</span> →
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -398,14 +420,14 @@ function Intro({ onBegin, kiosk }: { onBegin: () => void; kiosk: boolean }) {
                 <Link href={kiosk ? "/about?from=kiosk" : "/about"}>About GuideGPT &amp; your privacy</Link>
               </li>
             </ul>
-            <button className="btn-accent" onClick={onBegin}>
-              Begin →
-            </button>
+            <a className="btn-accent" href="#advisors">
+              Choose an advisor →
+            </a>
           </div>
           <ol className="stages">
-            {STAGES.map(([name, text], i) => (
+            {STEPS.map(([name, text], i) => (
               <li key={name}>
-                <span className="stage-num">Stage {i + 1}</span>
+                <span className="stage-num">Step {i + 1}</span>
                 <div>
                   <h3>{name}</h3>
                   <p>{text}</p>
@@ -510,7 +532,7 @@ function Inline({ text, sources }: { text: string; sources: Citation[] }) {
   );
 }
 
-function reflectionAsMarkdown(r: Reflection): string {
+function reflectionAsMarkdown(r: Reflection, advisor: AdvisorSummary): string {
   const lines = [`# ${r.title}`, "", r.summary, ""];
   lines.push("## What you value", "", ...r.values.map((v) => `- **${v.value}**: ${v.evidence}`), "");
   lines.push("## Practices to try", "");
@@ -519,31 +541,42 @@ function reflectionAsMarkdown(r: Reflection): string {
     for (const g of p.guides) lines.push(`  - From IoG's ${g}`);
   }
   lines.push("", "## Questions to keep", "", ...r.questions_to_keep.map((q) => `- ${q}`), "");
-  lines.push(`_Created with GuideGPT, Institute on Generosity, ${new Date(r.createdAt).toLocaleDateString()}._`);
+  lines.push(`_Created with GuideGPT's ${advisor.name}, Institute on Generosity, ${new Date(r.createdAt).toLocaleDateString()}._`);
   return lines.join("\n");
 }
 
-function ReflectionCard({ reflection: r, kiosk, onFinish }: { reflection: Reflection; kiosk: boolean; onFinish: () => void }) {
+function ReflectionCard({
+  reflection: r,
+  kiosk,
+  onFinish,
+  advisor,
+}: {
+  reflection: Reflection;
+  kiosk: boolean;
+  onFinish: () => void;
+  advisor: AdvisorSummary;
+}) {
+  const label = `Your ${advisor.reflectionLabel}`;
   const [copied, setCopied] = useState(false);
 
   function download() {
-    const blob = new Blob([reflectionAsMarkdown(r)], { type: "text/markdown" });
+    const blob = new Blob([reflectionAsMarkdown(r, advisor)], { type: "text/markdown" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "my-giving-reflection.md";
+    a.download = `my-${advisor.reflectionLabel.replace(/\s+/g, "-")}.md`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
 
   async function copy() {
-    await navigator.clipboard.writeText(reflectionAsMarkdown(r));
+    await navigator.clipboard.writeText(reflectionAsMarkdown(r, advisor));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   return (
-    <article className="reflection" aria-label="Your giving reflection">
-      <p className="eyebrow">Your giving reflection</p>
+    <article className="reflection" aria-label={label}>
+      <p className="eyebrow">{label}</p>
       <h2>{r.title}</h2>
       <RichText text={r.summary} />
 
@@ -606,7 +639,7 @@ const RATINGS = [
 ] as const;
 
 /** One-question post-session survey (the proposal's "insightful or useful" metric). Anonymous. */
-function SurveyCard({ turns, mode }: { turns: number; mode: "web" | "kiosk" }) {
+function SurveyCard({ turns, mode, advisor }: { turns: number; mode: "web" | "kiosk"; advisor: string }) {
   const [rating, setRating] = useState<(typeof RATINGS)[number][0] | null>(null);
   const [comment, setComment] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -618,7 +651,7 @@ function SurveyCard({ turns, mode }: { turns: number; mode: "web" | "kiosk" }) {
       const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, comment, turns, mode }),
+        body: JSON.stringify({ rating, comment, turns, mode, advisor }),
       });
       setStatus(res.ok ? "sent" : "error");
     } catch {

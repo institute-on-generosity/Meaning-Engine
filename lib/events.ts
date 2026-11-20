@@ -8,9 +8,9 @@
 export type Mode = "web" | "kiosk";
 
 export type UsageEvent =
-  | { type: "session_started"; mode: Mode }
-  | { type: "reflection_created"; mode: Mode; turns: number; model: string }
-  | { type: "survey"; mode: Mode; rating: "insightful" | "useful" | "neutral" | "not_useful"; comment: string; turns: number };
+  | { type: "session_started"; mode: Mode; advisor: string }
+  | { type: "reflection_created"; mode: Mode; advisor: string; turns: number; model: string }
+  | { type: "survey"; mode: Mode; advisor: string; rating: "insightful" | "useful" | "neutral" | "not_useful"; comment: string; turns: number };
 
 export async function recordEvent(event: UsageEvent): Promise<void> {
   const row = { ...event, at: new Date().toISOString() };
