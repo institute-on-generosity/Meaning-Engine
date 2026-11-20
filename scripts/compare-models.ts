@@ -209,7 +209,7 @@ async function runOne(model: string, persona: Persona): Promise<Run> {
 }
 
 function report(runs: Run[], models: string[], personas: Persona[]): string {
-  const out: string[] = ["# WayToMatter model comparison", "", `Run ${new Date().toISOString()}.`, ""];
+  const out: string[] = ["# GuideGPT model comparison", "", `Run ${new Date().toISOString()}.`, ""];
   out.push(
     "Costs are estimates from token counts and list prices. Runs for one model happen back to back, so after its first conversation the corpus is read from cache. Real sessions spread across a day pay the cache-write cost more often.",
     "",
@@ -226,7 +226,7 @@ function report(runs: Run[], models: string[], personas: Persona[]): string {
       const r = runs.find((x) => x.model === m && x.persona.id === p.id)!;
       out.push("", `### ${m} ($${r.cost.toFixed(3)}, ${r.seconds.toFixed(0)}s)`, "");
       for (const t of r.transcript) {
-        out.push(`**${t.role === "user" ? "Visitor" : "WayToMatter"}:** ${t.content.replace(/\n+/g, " ")}`, "");
+        out.push(`**${t.role === "user" ? "Visitor" : "GuideGPT"}:** ${t.content.replace(/\n+/g, " ")}`, "");
         for (const c of t.citations) out.push(`> ${c}`, "");
       }
       if (r.error) out.push(`**Error:** ${r.error}`, "");

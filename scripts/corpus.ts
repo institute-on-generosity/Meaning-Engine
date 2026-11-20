@@ -1,5 +1,5 @@
 /**
- * Upload IoG's documents so WayToMatter can read them.
+ * Upload IoG's documents so GuideGPT can read them.
  *
  *   npm run corpus              # upload new or changed documents, update config/corpus.json
  *   npm run corpus -- --dry     # show what would be uploaded (no API calls)
@@ -21,8 +21,8 @@ import { corpusStorage } from "../lib/llm";
 const DIR = path.join(process.cwd(), "corpus", "iog");
 const SOURCES = path.join(process.cwd(), "corpus", "sources.yaml");
 const MANIFEST = path.join(process.cwd(), "config", "corpus.json");
-const PREFIX = "waytomatter__"; // marks our uploads in the account's file storage
-const LEGACY_PREFIXES = ["meaningengine__"]; // uploads from before the rename to WayToMatter
+const PREFIX = "guidegpt__"; // marks our uploads in the account's file storage
+const LEGACY_PREFIXES = ["meaningengine__", "waytomatter__"]; // uploads from before the rename to GuideGPT
 // Rough tokens per character with citations on, measured on the Giving Guides; used only by --dry.
 const TOKENS_PER_CHAR = 0.42;
 

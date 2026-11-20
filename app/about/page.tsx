@@ -4,8 +4,8 @@ import { corpus } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "About & privacy · WayToMatter",
-  description: "What WayToMatter is, what it draws on, and what happens to what you type.",
+  title: "About & privacy · GuideGPT",
+  description: "What GuideGPT is, what it draws on, and what happens to what you type.",
 };
 
 function guideTitles(): string[] {
@@ -28,7 +28,7 @@ export default async function About({ searchParams }: { searchParams: Promise<{ 
         <div className="topbar-inner">
           <div className="brand">
             <img className="org" src="/iog-logo-white.svg" alt="Institute on Generosity" width={106} height={30} />
-            <span className="product">WayToMatter · a reflection on your giving</span>
+            <span className="product">GuideGPT · a reflection on your giving</span>
           </div>
           <Link className="ghost" href={back}>
             Back
@@ -38,16 +38,16 @@ export default async function About({ searchParams }: { searchParams: Promise<{ 
 
       <main className="page">
         <p className="eyebrow">About &amp; privacy</p>
-        <h1>About WayToMatter</h1>
+        <h1>About GuideGPT</h1>
         <p>
-          WayToMatter is a reflection tool from the Institute on Generosity (IoG). It helps you think about why you
+          GuideGPT is a reflection tool from the Institute on Generosity (IoG). It helps you think about why you
           give, what you care about, and what you&rsquo;re unsure about, one question at a time. At the end, it can write
           you a personal giving reflection.
         </p>
 
         <h2>What it draws on</h2>
         <p>
-          WayToMatter draws only on materials published by IoG. When it uses one, it shows the passage it relied on so
+          GuideGPT draws only on materials published by IoG. When it uses one, it shows the passage it relied on so
           you can check. It doesn&rsquo;t use outside research or statistics.
         </p>
         {titles.length > 0 && (
@@ -64,7 +64,7 @@ export default async function About({ searchParams }: { searchParams: Promise<{ 
 
         <h2>What it is not</h2>
         <p>
-          WayToMatter is not a therapist, counselor, or financial, tax, or legal advisor. It won&rsquo;t tell you
+          GuideGPT is not a therapist, counselor, or financial, tax, or legal advisor. It won&rsquo;t tell you
           where or how much to give. If you&rsquo;re in crisis or thinking about harming yourself, please call or text{" "}
           <strong>988</strong> (US), text <strong>HOME</strong> to <strong>741741</strong>, or visit findahelpline.com
           outside the US. In an emergency, call 911 or your local emergency number.
@@ -115,7 +115,7 @@ export default async function About({ searchParams }: { searchParams: Promise<{ 
 
         <p>
           <Link className="btn-dark" href={back}>
-            Back to WayToMatter
+            Back to GuideGPT
           </Link>
         </p>
       </main>
